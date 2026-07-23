@@ -114,7 +114,6 @@ const SEASONAL_CONFIGS: SeasonalConfig[] = [
       { emoji: "🍐", name: "Pera", nutrient: "Fibra y vitamina C" },
       { emoji: "🍇", name: "Uva", nutrient: "Antioxidantes" },
       { emoji: "🥕", name: "Zanahoria", nutrient: "Betacarotenos" },
-      { emoji: "🎃", name: "Zapallo", nutrient: "Vitamina A y fibra" },
     ],
     distractors: [
       { emoji: "🍉", name: "Sandía", nutrient: "Producto de verano" },
