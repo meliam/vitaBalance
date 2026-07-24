@@ -256,8 +256,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Full keyboard navigation: Tab between elements, Enter to select
     - _Requirements: 13.1–13.5, 15.1, 22.6_
 
-- [ ] 19. LevelScene — Core gameplay
-  - [~] 19.1 Implement `src/scenes/LevelScene.ts`
+- [x] 19. LevelScene — Core gameplay
+  - [x] 19.1 Implement `src/scenes/LevelScene.ts`
     - Generic scene parametrized by level ID (1, 2, or 3); reads LevelConfig from config
     - Initializes GameState: score 0, lives 3, timer from config, balance 100, precision 0, combo 0, etc.
     - Creates Player entity with current outfit; handles keyboard (left/right, A/D) and touch input
@@ -272,8 +272,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Disposes unused resources on scene shutdown
     - _Requirements: 1.1–1.7, 2.1–2.6, 3.1–3.5, 4.1–4.4, 5.1–5.5, 6.1–6.5, 7.1–7.5, 15.3, 15.6, 18.5_
 
-- [ ] 20. HudScene — Overlay UI during gameplay
-  - [~] 20.1 Implement `src/scenes/HudScene.ts`
+- [x] 20. HudScene — Overlay UI during gameplay
+  - [x] 20.1 Implement `src/scenes/HudScene.ts`
     - Launched in parallel with LevelScene; displays on top
     - Shows: score, lives (heart icons), countdown timer, balance bar, combo counter, pause button
     - Level 1: progress indicator "X/8 productos"
@@ -283,8 +283,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Updates every frame from shared game state (via scene data or event bus)
     - _Requirements: 4.2, 5.5, 6.5, 7.5_
 
-- [ ] 21. PauseScene
-  - [~] 21.1 Implement `src/scenes/PauseScene.ts`
+- [x] 21. PauseScene
+  - [x] 21.1 Implement `src/scenes/PauseScene.ts`
     - Launched as overlay; pauses LevelScene (freezes timer, products, avatar)
     - Displays 3 buttons: "Continuar" (resume), "Reiniciar" (restart level), "Menú principal" (return to menu)
     - "Continuar" resumes LevelScene exactly as before pause
@@ -293,8 +293,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Keyboard: Escape resumes, Tab navigates buttons, Enter selects
     - _Requirements: 10.1–10.5_
 
-- [ ] 22. VictoryScene
-  - [~] 22.1 Implement `src/scenes/VictoryScene.ts`
+- [x] 22. VictoryScene
+  - [x] 22.1 Implement `src/scenes/VictoryScene.ts`
     - Displays confetti animation (disabled if reduceMotion), star rating (3 stars: 0 errors, 2 stars: 1–3 errors, 1 star: 4+ errors)
     - Shows VitaScore, detailed stats (Balance, Precisión, Variedad, Tiempo extra, Errores, Combo máx, Puntuación, Estrellas)
     - Shows unlocked reward (Gorra Cítrica, Remera VitaBalance, or Capa VitaHero)
@@ -305,15 +305,15 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Calls progress-system to unlock next level and persist progress
     - _Requirements: 11.1, 11.3, 11.5, 11.6, 11.7, 5.4, 6.4, 7.4, 9.2–9.5_
 
-- [ ] 23. GameOverScene
-  - [~] 23.1 Implement `src/scenes/GameOverScene.ts`
+- [x] 23. GameOverScene
+  - [x] 23.1 Implement `src/scenes/GameOverScene.ts`
     - Displays motivational non-punitive message, partial VitaScore, and stats
     - Buttons: "Reintentar" (replay same level), "Menú" (return to menu)
     - Optional alias input for partial score submission
     - _Requirements: 11.2, 11.4_
 
-- [ ] 24. RankingScene
-  - [~] 24.1 Implement `src/scenes/RankingScene.ts`
+- [x] 24. RankingScene
+  - [x] 24.1 Implement `src/scenes/RankingScene.ts`
     - Fetches and displays top scores for selected level from RankingService
     - Level selector tabs (Level 1, 2, 3)
     - Displays entries: rank, alias, VitaScore, precision, variety
@@ -322,8 +322,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Back button returns to previous screen
     - _Requirements: 12.1–12.4_
 
-- [ ] 25. ProfileScene
-  - [~] 25.1 Implement `src/scenes/ProfileScene.ts`
+- [x] 25. ProfileScene
+  - [x] 25.1 Implement `src/scenes/ProfileScene.ts`
     - Displays Player_Avatar at current outfit level with animated idle bob
     - Shows: accumulated VitaScore total, total points, nickname
     - Displays current outfit name and badge/outfit collection grid (locked vs unlocked items)
@@ -332,16 +332,16 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Persists nickname changes to localStorage
     - _Requirements: 20.1–20.6_
 
-- [ ] 26. HowToPlayScene
-  - [~] 26.1 Implement `src/scenes/HowToPlayScene.ts`
+- [x] 26. HowToPlayScene
+  - [x] 26.1 Implement `src/scenes/HowToPlayScene.ts`
     - Displays control instructions (keyboard and touch)
     - Game objectives overview for all 3 levels
     - Product type explanations (correct, unsolicited, spoiled, power-up) with visual examples
     - Back button to MenuScene
     - _Requirements: 19.1_
 
-- [ ] 27. SettingsScene
-  - [~] 27.1 Implement `src/scenes/SettingsScene.ts`
+- [x] 27. SettingsScene
+  - [x] 27.1 Implement `src/scenes/SettingsScene.ts`
     - "Reducir movimiento" toggle — applies immediately, persists to localStorage
     - Music on/off toggle — toggles AudioSystem music immediately, persists
     - Volume slider/control — adjusts master volume immediately, persists
@@ -351,11 +351,11 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Back button returns to previous screen
     - _Requirements: 15.7, 19.2, 19.3, 19.4, 21.7, 21.8, 21.9_
 
-- [~] 28. Checkpoint — All scenes implemented
+- [x] 28. Checkpoint — All scenes implemented
   - Ensure `pnpm build` succeeds with all scenes registered in game-config. Verify scene navigation flow manually or via console. Ask the user if questions arise.
 
-- [ ] 29. Audio integration
-  - [~] 29.1 Wire AudioSystem into LevelScene and menu scenes
+- [x] 29. Audio integration
+  - [x] 29.1 Wire AudioSystem into LevelScene and menu scenes
     - Level start: play background music loop
     - Correct capture: positive chime SFX
     - Spoiled capture: negative buzz SFX
@@ -365,38 +365,38 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Load saved audio settings on game boot (via StorageService)
     - _Requirements: 21.1–21.10_
 
-- [ ] 30. Accessibility pass
-  - [~] 30.1 Implement full keyboard navigation across all scenes
+- [x] 30. Accessibility pass
+  - [x] 30.1 Implement full keyboard navigation across all scenes
     - Tab order follows visual layout in menus and result screens
     - Enter activates focused element; Escape goes back or pauses
     - Visible 4px focus ring on all interactive elements
     - _Requirements: 15.1, 15.2_
 
-  - [~] 30.2 Implement reduced-motion support
+  - [x] 30.2 Implement reduced-motion support
     - Check prefersReducedMotion() + manual toggle from settings
     - Disable confetti, reduce falling animations to simple vertical translation, disable decorative particles
     - _Requirements: 15.3, 15.7_
 
-  - [~] 30.3 Verify contrast and non-color differentiation
+  - [x] 30.3 Verify contrast and non-color differentiation
     - Ensure all text meets 4.5:1 contrast ratio (3:1 for large text)
     - Spoiled products differentiated by shape distortion + texture, not color alone
     - Screen flash limited to single 350ms pulse, never > 3 flashes/sec
     - _Requirements: 15.4, 15.5, 15.6_
 
-  - [~] 30.4 Implement touch controls for mobile
+  - [x] 30.4 Implement touch controls for mobile
     - Display left/right arrow buttons (64×64 px minimum) at bottom of viewport on touch devices
     - All interactive elements maintain 44×44 minimum touch target
     - _Requirements: 14.3, 14.4_
 
-- [ ] 31. Responsive scaling verification
-  - [~] 31.1 Verify Phaser FIT scale mode across viewports
+- [x] 31. Responsive scaling verification
+  - [x] 31.1 Verify Phaser FIT scale mode across viewports
     - Test at 640×360 (minimum), 1024×768 (tablet), 1280×520 (base), 1920×1080 (full HD)
     - Ensure no critical UI elements outside viewport or under notch/nav bar
     - Ensure text and HUD scale proportionally
     - _Requirements: 14.1–14.4_
 
-- [ ] 32. Educational feedback integration
-  - [~] 32.1 Wire Toast component into LevelScene capture events
+- [x] 32. Educational feedback integration
+  - [x] 32.1 Wire Toast component into LevelScene capture events
     - On correct capture: show "[Product name] · [Nutrient] · +[points]" for 1.8s
     - On spoiled capture: show "¡Ese no estaba bien!" for 1.8s
     - On unsolicited capture: show "[Product name] · No es de esta misión" for 1.8s
@@ -404,30 +404,30 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - Stacking behavior with 12px offset on rapid captures
     - _Requirements: 8.1–8.5_
 
-- [ ] 33. Estrella Vita power-up integration
-  - [~] 33.1 Wire power-up activation in LevelScene
+- [x] 33. Estrella Vita power-up integration
+  - [x] 33.1 Wire power-up activation in LevelScene
     - On Estrella_Vita capture: set powerupActive = true, speedMultiplier = 0.28 for all products (existing + newly spawned)
     - Start 3000ms timer; on expiry restore speedMultiplier to 1.0
     - HUD shows blue pulsing indicator with countdown
     - _Requirements: 4.1–4.4_
 
-  - [~] 33.2 Write property test for Estrella Vita
+  - [x] 33.2 Write property test for Estrella Vita
     - **Property 8: Estrella Vita speed multiplier is exactly 0.28 for exactly 3 seconds** — While powerupActive is true, all product speeds are multiplied by 0.28; duration is exactly 3000ms
     - **Validates: Requirements 4.1**
 
-- [~] 34. Checkpoint — Full game loop working
+- [x] 34. Checkpoint — Full game loop working
   - Ensure the complete flow works: Boot → Preload → Menu → select Level 1 → play → capture 8 → Victory → progress saved. Ensure `pnpm build` and `pnpm test` pass. Ask the user if questions arise.
 
-- [ ] 35. Ranking integration end-to-end
-  - [~] 35.1 Wire ranking submission from VictoryScene and GameOverScene
+- [x] 35. Ranking integration end-to-end
+  - [x] 35.1 Wire ranking submission from VictoryScene and GameOverScene
     - Validate alias input (1–16 chars, alphanumeric + spaces only)
     - Submit via RankingService; handle API failure gracefully with toast
     - Pre-fill alias from localStorage nickname
     - Persist nickname on successful submission
     - _Requirements: 11.5, 11.6, 11.7, 12.1–12.4_
 
-- [ ] 36. Local persistence integration
-  - [~] 36.1 Wire StorageService across all scenes
+- [x] 36. Local persistence integration
+  - [x] 36.1 Wire StorageService across all scenes
     - On game boot: load saved progress, settings, profile
     - On level complete: save updated progress
     - On settings change: save immediately
@@ -435,8 +435,8 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - On corrupted/unavailable localStorage: use defaults silently
     - _Requirements: 17.1–17.5_
 
-- [ ] 37. Error handling hardening
-  - [~] 37.1 Add global error boundaries and graceful fallbacks
+- [x] 37. Error handling hardening
+  - [x] 37.1 Add global error boundaries and graceful fallbacks
     - Wrap all async service calls in try/catch at scene level
     - PreloadScene: retry failed assets up to 2 times, fallback to colored rectangles/system fonts
     - Font loading: 3s timeout, fallback to sans-serif/monospace
@@ -444,7 +444,7 @@ Full implementation of an educational arcade web game using Phaser 3 + TypeScrip
     - No unhandledrejection or uncaught exceptions reaching the user
     - _Requirements: 12.4, 17.4, 18.4_
 
-- [~] 38. Final checkpoint — All tests pass, build clean
+- [x] 38. Final checkpoint — All tests pass, build clean
   - Run `pnpm lint`, `pnpm test`, `pnpm build`. Ensure zero errors. Ask the user if questions arise.
 
 ## Task Dependency Graph

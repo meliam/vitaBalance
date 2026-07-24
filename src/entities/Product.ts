@@ -118,7 +118,7 @@ export class Product extends Phaser.GameObjects.Container {
 
   /**
    * Update the product each frame — applies gravity (vertical fall)
-   * and a gentle wobble rotation.
+   * and a gentle wobble rotation (disabled when reduceMotion is active).
    *
    * @param dt - Delta time in milliseconds
    * @param speedMultiplier - Speed factor (0.28 during Estrella Vita, 1.0 normally)
@@ -131,15 +131,18 @@ export class Product extends Phaser.GameObjects.Container {
     // Apply gravity (move downward)
     this.y += this.speed * speedMultiplier * dtSeconds * 60;
 
-    // Apply gentle wobble rotation
-    const rotationDelta = this.rotationSpeed * dtSeconds;
-    const newRotation = this.rotation + rotationDelta;
+    // Apply gentle wobble rotation only when reduced motion is not active
+    const reduceMotion = this.scene.registry.get('reduceMotion') as boolean;
+    if (!reduceMotion) {
+      const rotationDelta = this.rotationSpeed * dtSeconds;
+      const newRotation = this.rotation + rotationDelta;
 
-    // Reverse wobble direction at bounds
-    if (Math.abs(newRotation) > Product.MAX_ROTATION) {
-      this.rotationSpeed = -this.rotationSpeed;
+      // Reverse wobble direction at bounds
+      if (Math.abs(newRotation) > Product.MAX_ROTATION) {
+        this.rotationSpeed = -this.rotationSpeed;
+      }
+      this.rotation += this.rotationSpeed * dtSeconds;
     }
-    this.rotation += this.rotationSpeed * dtSeconds;
 
     // Deactivate if fallen below screen
     if (this.y > GAME_HEIGHT + Product.SIZE) {
