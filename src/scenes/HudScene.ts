@@ -92,16 +92,23 @@ export class HudScene extends Phaser.Scene {
   }
 
   update(): void {
+    // Safety: stop updating if this scene is being shut down or objects were destroyed
+    if (!this.scene.isActive()) return;
+
     const state = this.registry.get('gameState') as GameState | undefined;
     if (!state) return;
 
-    this.updateScore(state.score);
-    this.updateLives(state.lives);
-    this.updateTimer(state.timeLeft);
-    this.updateBalanceBar(state.balance);
-    this.updateCombo(state.combo);
-    this.updateObjective(state);
-    this.updatePowerup(state);
+    try {
+      this.updateScore(state.score);
+      this.updateLives(state.lives);
+      this.updateTimer(state.timeLeft);
+      this.updateBalanceBar(state.balance);
+      this.updateCombo(state.combo);
+      this.updateObjective(state);
+      this.updatePowerup(state);
+    } catch {
+      // Scene objects may have been destroyed during transition — stop gracefully
+    }
   }
 
   // ─── Create Methods ──────────────────────────────────────────────────────────

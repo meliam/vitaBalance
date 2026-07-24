@@ -170,8 +170,11 @@ export class GameOverScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5, 0.5);
 
-    // Keyboard input handling
+    // Keyboard input handling for alias (ignores navigation keys)
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      // Let navigation keys pass through to buttons/scene
+      if (['Enter', 'Tab', 'Escape'].includes(event.key)) return;
+
       if (event.key === 'Backspace') {
         this.aliasValue = this.aliasValue.slice(0, -1);
       } else if (event.key.length === 1 && this.aliasValue.length < 16) {
