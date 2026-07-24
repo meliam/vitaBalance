@@ -191,20 +191,17 @@ export class HudScene extends Phaser.Scene {
     pauseIcon.setOrigin(0.5, 0.5);
     this.pauseBtn.add(pauseIcon);
 
-    // Interactive
-    this.pauseBtn.setSize(44, 44);
-    this.pauseBtn.setInteractive(
-      new Phaser.Geom.Circle(0, 0, 22),
-      Phaser.Geom.Circle.Contains,
-    );
-    this.pauseBtn.on('pointerup', () => {
-      // Pause the level scene
+    // Use a Zone for reliable click detection (same pattern as Button)
+    const hitZone = this.add.zone(0, 0, 44, 44);
+    hitZone.setInteractive({ useHandCursor: true });
+    hitZone.on('pointerdown', () => {
       const levelScene = this.scene.get('LevelScene');
       if (levelScene && levelScene.scene.isActive()) {
         levelScene.scene.launch('PauseScene');
         levelScene.scene.pause();
       }
     });
+    this.pauseBtn.add(hitZone);
   }
 
   private createPowerupIndicator(): void {
