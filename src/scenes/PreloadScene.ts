@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../utils/constants';
+import { getReducedMotionSetting } from '../utils/accessibility';
+import { StorageService } from '../services/storage-service';
 
 /**
  * PreloadScene — Loads all game assets (sprites, audio, UI, fonts) with
@@ -34,6 +36,11 @@ export class PreloadScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     this.generateFallbackTextures();
+
+    // Initialize reduceMotion in registry from settings or OS preference
+    const settings = StorageService.getSettings();
+    const reduceMotion = getReducedMotionSetting(settings);
+    this.registry.set('reduceMotion', reduceMotion);
 
     // Load web fonts before transitioning (with timeout fallback)
     await PreloadScene.loadFonts();

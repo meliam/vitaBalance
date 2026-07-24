@@ -2,6 +2,15 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { PreloadScene } from '../scenes/PreloadScene';
 import { MenuScene } from '../scenes/MenuScene';
+import { LevelScene } from '../scenes/LevelScene';
+import { HudScene } from '../scenes/HudScene';
+import { PauseScene } from '../scenes/PauseScene';
+import { VictoryScene } from '../scenes/VictoryScene';
+import { GameOverScene } from '../scenes/GameOverScene';
+import { RankingScene } from '../scenes/RankingScene';
+import { ProfileScene } from '../scenes/ProfileScene';
+import { HowToPlayScene } from '../scenes/HowToPlayScene';
+import { SettingsScene } from '../scenes/SettingsScene';
 
 export const GAME_CONFIG: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -21,5 +30,5 @@ export const GAME_CONFIG: Phaser.Types.Core.GameConfig = {
       height: 1080,
     },
   },
-  scene: [BootScene, PreloadScene, MenuScene],
+  scene: [BootScene, PreloadScene, MenuScene, LevelScene, HudScene, PauseScene, VictoryScene, GameOverScene, RankingScene, ProfileScene, HowToPlayScene, SettingsScene],
 };

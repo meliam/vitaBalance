@@ -279,7 +279,7 @@ export class MenuScene extends Phaser.Scene {
     const titleText = this.add.text(0, -height / 2 + 30, level.title, {
       fontFamily: 'Fredoka One, sans-serif',
       fontSize: '18px',
-      color: unlocked ? '#ffffff' : '#888888',
+      color: unlocked ? '#ffffff' : '#999999',
       align: 'center',
       wordWrap: { width: width - 30 },
     });
@@ -290,7 +290,7 @@ export class MenuScene extends Phaser.Scene {
     const descText = this.add.text(0, -height / 2 + 80, level.description, {
       fontFamily: 'Nunito, sans-serif',
       fontSize: '14px',
-      color: unlocked ? '#e0e0e0' : '#666666',
+      color: unlocked ? '#e0e0e0' : '#999999',
       align: 'center',
       wordWrap: { width: width - 40 },
     });
@@ -305,7 +305,7 @@ export class MenuScene extends Phaser.Scene {
       {
         fontFamily: 'Nunito, sans-serif',
         fontSize: '15px',
-        color: unlocked ? '#ffd54f' : '#555555',
+        color: unlocked ? '#ffd54f' : '#999999',
         align: 'center',
       },
     );
