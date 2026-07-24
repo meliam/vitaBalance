@@ -36,11 +36,19 @@ export class AudioSystem {
 
     if (!this.musicEnabled) return;
 
-    this.currentMusic = this.scene.sound.add(key, {
-      loop: true,
-      volume: this.volume,
-    });
-    this.currentMusic.play();
+    // Guard: only play if the audio key exists in the cache
+    if (!this.scene.cache.audio.exists(key)) return;
+
+    try {
+      this.currentMusic = this.scene.sound.add(key, {
+        loop: true,
+        volume: this.volume,
+      });
+      this.currentMusic.play();
+    } catch {
+      // Audio playback failed silently — game continues
+      this.currentMusic = null;
+    }
   }
 
   /**
@@ -60,7 +68,14 @@ export class AudioSystem {
   playSFX(key: string): void {
     if (!this.scene) return;
 
-    this.scene.sound.play(key, { volume: this.volume });
+    // Guard: only play if the audio key exists in the cache
+    if (!this.scene.cache.audio.exists(key)) return;
+
+    try {
+      this.scene.sound.play(key, { volume: this.volume });
+    } catch {
+      // SFX playback failed silently — game continues
+    }
   }
 
   /**

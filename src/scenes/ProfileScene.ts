@@ -90,6 +90,7 @@ export class ProfileScene extends Phaser.Scene {
   private createAvatarSection(x: number, y: number, outfitLevel: number): void {
     this.player = new Player(this, x, y);
     this.player.setOutfit(outfitLevel);
+    this.player.disableTouchInput();
 
     // Idle bob animation (gentle y oscillation)
     const reduceMotion = this.registry.get('reduceMotion') as boolean;

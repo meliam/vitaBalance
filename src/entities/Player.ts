@@ -133,10 +133,18 @@ export class Player extends Phaser.GameObjects.Container {
    * Clean up touch input listeners on destroy.
    */
   destroy(fromScene?: boolean): void {
+    this.disableTouchInput();
+    super.destroy(fromScene);
+  }
+
+  /**
+   * Disable touch/pointer input for this player (used when Player is decorative only).
+   */
+  disableTouchInput(): void {
     this.scene?.input.off('pointerdown', this.handlePointerDown, this);
     this.scene?.input.off('pointermove', this.handlePointerMove, this);
     this.scene?.input.off('pointerup', this.handlePointerUp, this);
-    super.destroy(fromScene);
+    this.touchActive = false;
   }
 
   // ─── Private Methods ─────────────────────────────────────────────────────────

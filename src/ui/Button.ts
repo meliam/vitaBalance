@@ -4,7 +4,11 @@ import { MIN_TOUCH_TARGET } from '../utils/constants';
 
 /**
  * Accessible pill-shaped button component.
- * Extends Phaser.GameObjects.Container with configurable text, color, and size.
+ *
+ * Uses a Phaser Zone for the hit area (best practice for reliable click detection)
+ * with Graphics for visual rendering. This avoids the Container hit-test issues
+ * that occur with nested containers in Phaser 3.
+ *
  * Enforces minimum 44×44 touch target (WCAG 2.5.5).
  * Supports keyboard navigation with visible focus indicator.
  */
@@ -12,6 +16,7 @@ export class Button extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Graphics;
   private label: Phaser.GameObjects.Text;
   private focusRing: Phaser.GameObjects.Graphics;
+  private hitZone: Phaser.GameObjects.Zone;
 
   private btnWidth: number;
   private btnHeight: number;
@@ -56,23 +61,16 @@ export class Button extends Phaser.GameObjects.Container {
     this.label.setOrigin(0.5, 0.5);
     this.add(this.label);
 
-    // Set interactive hit area
-    this.setSize(this.btnWidth, this.btnHeight);
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(
-        -this.btnWidth / 2,
-        -this.btnHeight / 2,
-        this.btnWidth,
-        this.btnHeight,
-      ),
-      Phaser.Geom.Rectangle.Contains,
-    );
+    // Use a Zone for reliable hit detection (Phaser best practice for Containers)
+    // Zone is centered at (0,0) relative to this container
+    this.hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, this.btnWidth, this.btnHeight);
+    this.hitZone.setInteractive({ useHandCursor: true });
+    this.add(this.hitZone);
 
-    // Pointer event handlers
-    this.on('pointerdown', this.handlePointerDown, this);
-    this.on('pointerup', this.handlePointerUp, this);
-    this.on('pointerover', this.handlePointerOver, this);
-    this.on('pointerout', this.handlePointerOut, this);
+    // Pointer event handlers on the zone
+    this.hitZone.on('pointerdown', this.handlePointerDown, this);
+    this.hitZone.on('pointerover', this.handlePointerOver, this);
+    this.hitZone.on('pointerout', this.handlePointerOut, this);
 
     // Register initial onClick if provided
     if (config.onClick) {
@@ -82,7 +80,7 @@ export class Button extends Phaser.GameObjects.Container {
     // Listen for keyboard events (Enter key when focused)
     scene.input.keyboard?.on('keydown-ENTER', this.handleKeyEnter, this);
 
-    // Add to scene
+    // Add to scene display list
     scene.add.existing(this);
   }
 
@@ -104,12 +102,11 @@ export class Button extends Phaser.GameObjects.Container {
     if (enabled) {
       this.drawBackground(this.btnColor);
       this.label.setAlpha(1);
-      this.setInteractive();
+      this.hitZone.setInteractive({ useHandCursor: true });
     } else {
       this.drawBackground(Button.DISABLED_COLOR);
       this.label.setAlpha(0.5);
-      this.disableInteractive();
-      // Reset visual state
+      this.hitZone.disableInteractive();
       this.setScale(1);
     }
 
@@ -127,6 +124,21 @@ export class Button extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Override setVisible to also toggle interactivity.
+   */
+  setVisible(value: boolean): this {
+    super.setVisible(value);
+    if (value) {
+      if (this.enabled) {
+        this.hitZone.setInteractive({ useHandCursor: true });
+      }
+    } else {
+      this.hitZone.disableInteractive();
+    }
+    return this;
+  }
+
+  /**
    * Clean up keyboard listener on destroy.
    */
   destroy(fromScene?: boolean): void {
@@ -139,7 +151,6 @@ export class Button extends Phaser.GameObjects.Container {
   private drawBackground(color: number): void {
     this.bg.clear();
     this.bg.fillStyle(color, 1);
-    // Pill shape: rounded rectangle with radius = half the height
     const radius = this.btnHeight / 2;
     this.bg.fillRoundedRect(
       -this.btnWidth / 2,
@@ -153,9 +164,7 @@ export class Button extends Phaser.GameObjects.Container {
   private drawFocusRing(): void {
     this.focusRing.clear();
 
-    if (!this.focused) {
-      return;
-    }
+    if (!this.focused) return;
 
     const ringOffset = Button.FOCUS_RING_WIDTH;
     const ringWidth = this.btnWidth + ringOffset * 2;
@@ -175,11 +184,9 @@ export class Button extends Phaser.GameObjects.Container {
   private handlePointerDown(): void {
     if (!this.enabled) return;
     this.setScale(Button.ACTIVE_SCALE);
-  }
-
-  private handlePointerUp(): void {
-    if (!this.enabled) return;
-    this.setScale(1);
+    this.scene.time.delayedCall(80, () => {
+      if (this.scene) this.setScale(1);
+    });
     this.pressCallback?.();
   }
 
@@ -195,13 +202,10 @@ export class Button extends Phaser.GameObjects.Container {
 
   private handleKeyEnter(): void {
     if (!this.enabled || !this.focused) return;
-
-    // Visual feedback for keyboard activation
     this.setScale(Button.ACTIVE_SCALE);
     this.scene.time.delayedCall(100, () => {
-      this.setScale(1);
+      if (this.scene) this.setScale(1);
     });
-
     this.pressCallback?.();
   }
 }

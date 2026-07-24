@@ -144,6 +144,23 @@ export class LevelScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset touch state
+    this.touchLeft = false;
+    this.touchRight = false;
+
+    // Clear any stale pools from previous scene execution
+    // (shutdown() may not fire reliably in Phaser scene transitions)
+    this.productPool = [];
+    this.powerUpPool = [];
+
+    // Ensure game state is clean
+    this.state.paused = false;
+    this.state.won = false;
+    this.state.gameOver = false;
+
+    // Register shutdown cleanup (Phaser scene event)
+    this.events.once('shutdown', this.shutdown, this);
+
     // Initialize audio system with saved settings
     const settings = StorageService.getSettings();
     this.audioSystem.init(this, { musicEnabled: settings.musicEnabled, volume: settings.volume });
@@ -264,10 +281,8 @@ export class LevelScene extends Phaser.Scene {
     // Remove keyboard listeners
     this.keyEsc.off('down', this.handlePause, this);
 
-    // Stop HUD scene
-    if (this.scene.isActive('HudScene')) {
-      this.scene.stop('HudScene');
-    }
+    // Stop HUD scene unconditionally (covers active, paused, or sleeping states)
+    this.scene.stop('HudScene');
   }
 
   // ─── Object Pool ─────────────────────────────────────────────────────────────

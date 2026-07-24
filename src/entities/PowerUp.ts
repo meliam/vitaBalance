@@ -90,6 +90,9 @@ export class PowerUp extends Product {
   private startPulse(): void {
     this.stopPulse();
 
+    // Guard: if scene was destroyed, skip animation
+    if (!this.scene) return;
+
     // Check for reduced-motion preference
     if (this.scene.registry.get('reduceMotion') === true) {
       // Static glow without animation
