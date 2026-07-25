@@ -164,7 +164,9 @@ export class LevelScene extends Phaser.Scene {
     // Initialize audio system with saved settings
     const settings = StorageService.getSettings();
     this.audioSystem.init(this, { musicEnabled: settings.musicEnabled, volume: settings.volume });
-    this.audioSystem.playMusic('bgm-level');
+    if (settings.musicEnabled && !this.sound.mute) {
+      this.audioSystem.playMusic('bgm-level');
+    }
 
     // Create player with current outfit
     const progress = StorageService.getProgress();
