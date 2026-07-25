@@ -27,6 +27,7 @@ import {
   POWERUP_SPEED_FACTOR,
   FLASH_DURATION,
   FLASH_OPACITY,
+  REDUCED_MOTION_SPEED_FACTOR,
 } from '../utils/constants';
 
 /**
@@ -138,7 +139,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     // Reset power-up state
-    this.speedMultiplier = 1.0;
+    this.speedMultiplier = this.reduceMotion ? REDUCED_MOTION_SPEED_FACTOR : 1.0;
     this.powerupActive = false;
     this.powerupTimerEvent = null;
   }
@@ -579,7 +580,10 @@ export class LevelScene extends Phaser.Scene {
 
     // Start expiry timer
     this.powerupTimerEvent = this.time.delayedCall(POWERUP_DURATION, () => {
-      this.speedMultiplier = 1.0;
+      const baseSpeed = (this.registry.get('reduceMotion') as boolean)
+        ? REDUCED_MOTION_SPEED_FACTOR
+        : 1.0;
+      this.speedMultiplier = baseSpeed;
       this.powerupActive = false;
       this.state.powerupActive = false;
       this.state.powerupTimeRemaining = 0;
