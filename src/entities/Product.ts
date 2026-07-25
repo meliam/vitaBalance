@@ -38,6 +38,9 @@ export class Product extends Phaser.GameObjects.Container {
   /** Emoji text representing the product. */
   private emojiText: Phaser.GameObjects.Text;
 
+  /** Optional image for products with custom texture (instead of emoji). */
+  private customImage: Phaser.GameObjects.Image | null = null;
+
   /** Dark overlay for spoiled products (accessibility: texture differentiation). */
   private spoiledOverlay: Phaser.GameObjects.Graphics;
 
@@ -94,8 +97,27 @@ export class Product extends Phaser.GameObjects.Container {
     this.setRotation(0);
     this.setScale(1);
 
-    // Update emoji
-    this.emojiText.setText(config.productConfig.emoji);
+    // Update emoji or custom texture
+    if (config.productConfig.textureKey && this.scene.textures.exists(config.productConfig.textureKey)) {
+      // Use custom drawn texture instead of emoji
+      this.emojiText.setVisible(false);
+      if (!this.customImage) {
+        this.customImage = new Phaser.GameObjects.Image(this.scene, 0, 0, config.productConfig.textureKey);
+        this.customImage.setOrigin(0.5, 0.5);
+        this.add(this.customImage);
+        // Move it behind the spoiled overlay but above bg
+        this.moveTo(this.customImage, this.getIndex(this.emojiText));
+      }
+      this.customImage.setTexture(config.productConfig.textureKey);
+      this.customImage.setVisible(true);
+    } else {
+      // Use emoji text
+      this.emojiText.setText(config.productConfig.emoji);
+      this.emojiText.setVisible(true);
+      if (this.customImage) {
+        this.customImage.setVisible(false);
+      }
+    }
 
     // Draw background based on type
     this.drawBackground();

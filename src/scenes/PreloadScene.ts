@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../utils/constants';
 import { getReducedMotionSetting } from '../utils/accessibility';
 import { StorageService } from '../services/storage-service';
+import { PumpkinGraphic } from '../ui/PumpkinGraphic';
 
 /**
  * PreloadScene — Loads all game assets (sprites, audio, UI, fonts) with
@@ -36,6 +37,9 @@ export class PreloadScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     this.generateFallbackTextures();
+
+    // Generate custom product textures (zapallo pumpkin drawn with Graphics)
+    PumpkinGraphic.generateTexture(this, 32);
 
     // Initialize reduceMotion in registry from settings or OS preference
     const settings = StorageService.getSettings();

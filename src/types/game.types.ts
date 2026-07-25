@@ -44,6 +44,8 @@ export interface ProductConfig {
   points: number;
   vitaminC?: boolean;
   potassium?: boolean;
+  /** Optional texture key for products that use a custom drawn graphic instead of emoji. */
+  textureKey?: string;
 }
 
 export interface SpawnProbabilities {

@@ -156,7 +156,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private createFloatingFruits(layout: HomeLayoutResult): void {
-    const fruitEmojis = PRODUCTS.slice(0, layout.floatingFruits.length).map((p) => p.emoji);
+    const fruitEmojis = PRODUCTS
+      .filter((p) => p.emoji.length > 0)
+      .slice(0, layout.floatingFruits.length)
+      .map((p) => p.emoji);
 
     layout.floatingFruits.forEach((pos, i) => {
       const emoji = fruitEmojis[i % fruitEmojis.length];
