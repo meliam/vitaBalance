@@ -485,18 +485,24 @@ export class LevelScene extends Phaser.Scene {
       potassium: product.productData.potassium,
     };
 
+    // ── DEBUG: Log capture details ──
+    console.log(`[Capture] ${product.type}: "${product.productData.name}" | vitC:${!!product.productData.vitaminC} pot:${!!product.productData.potassium} | id:${product.productData.id}`);
+
     // Process scoring
     const updates = processCapture(this.state, capturedItem, SCORING_CONFIG);
     Object.assign(this.state, updates);
 
     // Level 3: update checklist if product is in target products
-    if (
-      this.levelConfig.objective.type === 'seasonal' &&
-      product.type === 'correct' &&
-      this.levelConfig.objective.products.includes(product.productData.id)
-    ) {
-      this.state.checklist[product.productData.id] = true;
+    if (this.levelConfig.objective.type === 'seasonal') {
+      const isTarget = this.levelConfig.objective.products.includes(product.productData.id);
+      console.log(`[L3 Check] id:"${product.productData.id}" type:${product.type} isTarget:${isTarget} targets:`, this.levelConfig.objective.products);
+      if (product.type === 'correct' && isTarget) {
+        this.state.checklist[product.productData.id] = true;
+      }
     }
+
+    // ── DEBUG: Log state after capture ──
+    console.log(`[State] lives:${this.state.lives} potCaught:${this.state.potassiumCaught} vitCCaught:${this.state.vitaminCCaught} checklist:`, JSON.stringify(this.state.checklist));
 
     // Audio feedback based on capture type
     if (product.type === 'correct') {

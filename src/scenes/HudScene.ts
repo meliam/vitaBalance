@@ -106,8 +106,9 @@ export class HudScene extends Phaser.Scene {
       this.updateCombo(state.combo);
       this.updateObjective(state);
       this.updatePowerup(state);
-    } catch {
-      // Scene objects may have been destroyed during transition — stop gracefully
+    } catch (e) {
+      // Log the error for debugging
+      console.error('[HudScene] update error:', e);
     }
   }
 
@@ -228,10 +229,11 @@ export class HudScene extends Phaser.Scene {
   private createObjectiveDisplay(): void {
     this.objectiveContainer = this.add.container(0, HudScene.HUD_HEIGHT + 4);
 
-    // Objective background strip
+    // Objective background strip (taller for Level 3 to fit checks below emojis)
+    const stripHeight = this.levelConfig.id === 3 ? 38 : 28;
     const objBg = this.add.graphics();
     objBg.fillStyle(HudScene.BG_COLOR, 0.7);
-    objBg.fillRect(0, 0, GAME_WIDTH, 28);
+    objBg.fillRect(0, 0, GAME_WIDTH, stripHeight);
     this.objectiveContainer.add(objBg);
 
     const levelId = this.levelConfig.id;
@@ -298,7 +300,7 @@ export class HudScene extends Phaser.Scene {
       const emoji = productConfig?.emoji ?? '🍎';
 
       // Product emoji
-      const itemText = this.add.text(startX + i * spacing, 14, emoji, {
+      const itemText = this.add.text(startX + i * spacing, 10, emoji, {
         fontSize: '18px',
         align: 'center',
       });
@@ -306,11 +308,13 @@ export class HudScene extends Phaser.Scene {
       this.objectiveContainer.add(itemText);
       this.level3Items.push(itemText);
 
-      // Check overlay (hidden initially)
-      const checkText = this.add.text(startX + i * spacing, 14, '✓', {
-        fontSize: '14px',
-        color: '#4caf50',
+      // Check mark below emoji (visible green ✓ with background)
+      const checkText = this.add.text(startX + i * spacing, 24, '✓', {
+        fontSize: '12px',
+        color: '#000000',
         fontStyle: 'bold',
+        backgroundColor: '#4caf50',
+        padding: { x: 3, y: 1 },
         align: 'center',
       });
       checkText.setOrigin(0.5, 0.5);
@@ -328,7 +332,8 @@ export class HudScene extends Phaser.Scene {
 
   private updateLives(lives: number): void {
     for (let i = 0; i < MAX_LIVES; i++) {
-      this.livesTexts[i].setText(i < lives ? '❤️' : '🖤');
+      // Use alpha to show lost lives (avoids setText crash with emoji texture regeneration)
+      this.livesTexts[i].setAlpha(i < lives ? 1 : 0.2);
     }
   }
 
