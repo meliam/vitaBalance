@@ -147,15 +147,18 @@ vitaBalance/
 
 Por favor leé nuestras guías de contribución. Incluyen instrucciones para abrir issues, estándares de código y notas de desarrollo.
 
-Además, todo el código TypeScript debe seguir los estándares definidos en `.eslintrc.cjs` y `.prettierrc`.
-
-Las preferencias de editor están disponibles en la configuración del proyecto para uso fácil en editores comunes. Leé más y descargá plugins en https://editorconfig.org/.
+Todo el código TypeScript debe seguir los estándares definidos en `.eslintrc.cjs` y `.prettierrc`.
 
 ## Creators
 
 **Meliam**
-
 - https://github.com/meliam
+
+**Roxana**
+- https://github.com/RoxanaBeresaga
+
+**Daniela S. Tochi**
+- https://github.com/DanielaS-Tochi
 
 ## Thanks
 
@@ -163,6 +166,7 @@ Las preferencias de editor están disponibles en la configuración del proyecto 
 - Phaser 3 por el motor de juego 2D que hace posible este proyecto.
 - Kiro por el desarrollo spec-driven y la asistencia de IA.
 - fast-check por el framework de property-based testing.
+- Nuestro equipo de testers: Hannah (11), Julian (9) y Josias (7) — quienes probaron el juego incansablemente y nos ayudaron a encontrar bugs reales.
 
 ## Copyright and license
 
