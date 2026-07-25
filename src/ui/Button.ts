@@ -9,8 +9,14 @@ import { MIN_TOUCH_TARGET } from '../utils/constants';
  * with Graphics for visual rendering. This avoids the Container hit-test issues
  * that occur with nested containers in Phaser 3.
  *
- * Enforces minimum 44×44 touch target (WCAG 2.5.5).
- * Supports keyboard navigation with visible focus indicator.
+ * Features:
+ *   - Enforces minimum 44×44 touch target (WCAG 2.5.5).
+ *   - Supports keyboard navigation with visible focus indicator.
+ *   - Enter AND Space activate when focused.
+ *   - 'outline' variant: transparent bg with colored border + colored text.
+ *   - 'disableKeyboard' option: skips Phaser keyboard listeners when HTML a11y
+ *     layer handles keyboard externally.
+ *   - Proper cleanup on destroy (removes all listeners).
  */
 export class Button extends Phaser.GameObjects.Container {
   private bg: Phaser.GameObjects.Graphics;
@@ -21,9 +27,12 @@ export class Button extends Phaser.GameObjects.Container {
   private btnWidth: number;
   private btnHeight: number;
   private btnColor: number;
+  private btnColorHex: string;
+  private variant: 'filled' | 'outline';
   private enabled = true;
   private focused = false;
   private pressCallback: (() => void) | null = null;
+  private keyboardEnabled: boolean;
 
   private static readonly DEFAULT_COLOR = '#4CAF50';
   private static readonly DISABLED_COLOR = 0x9e9e9e;
@@ -34,12 +43,14 @@ export class Button extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, config: ButtonConfig) {
     super(scene, config.x, config.y);
 
+    this.variant = config.variant ?? 'filled';
+    this.keyboardEnabled = !(config.disableKeyboard ?? false);
+    this.btnColorHex = config.color ?? Button.DEFAULT_COLOR;
+
     // Enforce minimum touch target size
     this.btnWidth = Math.max(config.width ?? 160, MIN_TOUCH_TARGET);
     this.btnHeight = Math.max(config.height ?? 48, MIN_TOUCH_TARGET);
-    this.btnColor = Phaser.Display.Color.HexStringToColor(
-      config.color ?? Button.DEFAULT_COLOR,
-    ).color;
+    this.btnColor = Phaser.Display.Color.HexStringToColor(this.btnColorHex).color;
 
     // Create focus ring (drawn behind background)
     this.focusRing = new Phaser.GameObjects.Graphics(scene);
@@ -51,10 +62,11 @@ export class Button extends Phaser.GameObjects.Container {
     this.add(this.bg);
 
     // Create centered text label
+    const textColor = this.variant === 'outline' ? this.btnColorHex : '#ffffff';
     this.label = new Phaser.GameObjects.Text(scene, 0, 0, config.text, {
       fontSize: `${config.fontSize ?? 20}px`,
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
+      color: textColor,
       fontStyle: 'bold',
       align: 'center',
     });
@@ -62,7 +74,6 @@ export class Button extends Phaser.GameObjects.Container {
     this.add(this.label);
 
     // Use a Zone for reliable hit detection (Phaser best practice for Containers)
-    // Zone is centered at (0,0) relative to this container
     this.hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, this.btnWidth, this.btnHeight);
     this.hitZone.setInteractive({ useHandCursor: true });
     this.add(this.hitZone);
@@ -77,8 +88,11 @@ export class Button extends Phaser.GameObjects.Container {
       this.pressCallback = config.onClick;
     }
 
-    // Listen for keyboard events (Enter key when focused)
-    scene.input.keyboard?.on('keydown-ENTER', this.handleKeyEnter, this);
+    // Listen for keyboard events (Enter + Space) when not disabled
+    if (this.keyboardEnabled) {
+      scene.input.keyboard?.on('keydown-ENTER', this.handleKeyActivate, this);
+      scene.input.keyboard?.on('keydown-SPACE', this.handleKeyActivate, this);
+    }
 
     // Add to scene display list
     scene.add.existing(this);
@@ -139,10 +153,27 @@ export class Button extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Clean up keyboard listener on destroy.
+   * Get the configured width of this button.
+   */
+  getWidth(): number {
+    return this.btnWidth;
+  }
+
+  /**
+   * Get the configured height of this button.
+   */
+  getHeight(): number {
+    return this.btnHeight;
+  }
+
+  /**
+   * Clean up all listeners on destroy.
    */
   destroy(fromScene?: boolean): void {
-    this.scene?.input.keyboard?.off('keydown-ENTER', this.handleKeyEnter, this);
+    if (this.keyboardEnabled) {
+      this.scene?.input.keyboard?.off('keydown-ENTER', this.handleKeyActivate, this);
+      this.scene?.input.keyboard?.off('keydown-SPACE', this.handleKeyActivate, this);
+    }
     super.destroy(fromScene);
   }
 
@@ -150,15 +181,28 @@ export class Button extends Phaser.GameObjects.Container {
 
   private drawBackground(color: number): void {
     this.bg.clear();
-    this.bg.fillStyle(color, 1);
     const radius = this.btnHeight / 2;
-    this.bg.fillRoundedRect(
-      -this.btnWidth / 2,
-      -this.btnHeight / 2,
-      this.btnWidth,
-      this.btnHeight,
-      radius,
-    );
+
+    if (this.variant === 'outline') {
+      // Transparent background with colored border
+      this.bg.fillStyle(color, 0.12);
+      this.bg.fillRoundedRect(
+        -this.btnWidth / 2, -this.btnHeight / 2,
+        this.btnWidth, this.btnHeight, radius,
+      );
+      this.bg.lineStyle(2, color, 1);
+      this.bg.strokeRoundedRect(
+        -this.btnWidth / 2, -this.btnHeight / 2,
+        this.btnWidth, this.btnHeight, radius,
+      );
+    } else {
+      // Solid filled background
+      this.bg.fillStyle(color, 1);
+      this.bg.fillRoundedRect(
+        -this.btnWidth / 2, -this.btnHeight / 2,
+        this.btnWidth, this.btnHeight, radius,
+      );
+    }
   }
 
   private drawFocusRing(): void {
@@ -173,11 +217,8 @@ export class Button extends Phaser.GameObjects.Container {
 
     this.focusRing.lineStyle(Button.FOCUS_RING_WIDTH, 0xffcc00, 1);
     this.focusRing.strokeRoundedRect(
-      -ringWidth / 2,
-      -ringHeight / 2,
-      ringWidth,
-      ringHeight,
-      radius,
+      -ringWidth / 2, -ringHeight / 2,
+      ringWidth, ringHeight, radius,
     );
   }
 
@@ -200,7 +241,7 @@ export class Button extends Phaser.GameObjects.Container {
     this.setScale(1);
   }
 
-  private handleKeyEnter(): void {
+  private handleKeyActivate(): void {
     if (!this.enabled || !this.focused) return;
     this.setScale(Button.ACTIVE_SCALE);
     this.scene.time.delayedCall(100, () => {

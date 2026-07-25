@@ -3,10 +3,10 @@
  * No Phaser dependencies — used across systems, scenes, and UI components.
  */
 
-/** Logical game resolution width in pixels. */
+/** Logical game resolution width in pixels (Scale.FIT canvas). */
 export const GAME_WIDTH = 1280 as const;
 
-/** Logical game resolution height in pixels. */
+/** Logical game resolution height in pixels (Scale.FIT canvas). */
 export const GAME_HEIGHT = 520 as const;
 
 /** Minimum touch target size in pixels (WCAG 2.5.5). */
