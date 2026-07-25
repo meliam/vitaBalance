@@ -29,3 +29,6 @@ export const FLASH_DURATION = 350 as const;
 
 /** Damage screen flash opacity (0–1). */
 export const FLASH_OPACITY = 0.28 as const;
+
+/** Speed multiplier when "Reducir movimiento" is active (same as power-up: 28% of normal). */
+export const REDUCED_MOTION_SPEED_FACTOR = 0.28 as const;
