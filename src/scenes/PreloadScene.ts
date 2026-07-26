@@ -143,12 +143,13 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private loadAudio(): void {
-    this.load.audio('bgm-level', 'assets/audio/bgm-level.mp3');
-    this.load.audio('sfx-correct', 'assets/audio/sfx-correct.mp3');
-    this.load.audio('sfx-spoiled', 'assets/audio/sfx-spoiled.mp3');
-    this.load.audio('sfx-unsolicited', 'assets/audio/sfx-unsolicited.mp3');
-    this.load.audio('sfx-victory', 'assets/audio/sfx-victory.mp3');
-    this.load.audio('sfx-gameover', 'assets/audio/sfx-gameover.mp3');
+    this.load.audio('bgm-level', 'assets/audio/bgm-level.wav');
+    this.load.audio('sfx-correct', 'assets/audio/sfx-correct.wav');
+    this.load.audio('sfx-spoiled', 'assets/audio/sfx-spoiled.wav');
+    this.load.audio('sfx-unsolicited', 'assets/audio/sfx-unsolicited.wav');
+    this.load.audio('sfx-powerup', 'assets/audio/sfx-powerup.wav');
+    this.load.audio('sfx-victory', 'assets/audio/sfx-victory.wav');
+    this.load.audio('sfx-gameover', 'assets/audio/sfx-gameover.wav');
   }
 
   private loadUIAssets(): void {
