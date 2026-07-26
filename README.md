@@ -22,29 +22,36 @@
 Cloná el repositorio e instalá las dependencias:
 
 1. **Clonar el repo**
+
    ```bash
    git clone https://github.com/meliam/vitaBalance.git
    cd vitaBalance
    ```
 
 2. **Instalar dependencias**
+
    ```bash
    pnpm install
    ```
 
 3. **Iniciar el servidor de desarrollo**
+
    ```bash
    pnpm dev
    ```
-   Abrí http://localhost:3000 en tu navegador.
+
+   Abrí <http://localhost:3000> en tu navegador.
 
 4. **Build para producción**
+
    ```bash
    pnpm build
    ```
+
    El output se genera en `dist/` listo para deploy en AWS Amplify.
 
 5. **Correr tests**
+
    ```bash
    pnpm test
    ```
@@ -58,7 +65,7 @@ Cloná el repositorio e instalá las dependencias:
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 | Métrica | Estado |
-|---------|--------|
+| ------- | ------ |
 | Build sin errores | ✅ |
 | Tests unitarios | 112/112 passing |
 | Property-based tests | 7 propiedades validadas |
@@ -69,7 +76,7 @@ Cloná el repositorio e instalá las dependencias:
 
 Estructura del proyecto:
 
-```
+```text
 vitaBalance/
 ├── .kiro/
 │   ├── specs/             # Spec-driven development docs
@@ -151,14 +158,21 @@ Todo el código TypeScript debe seguir los estándares definidos en `.eslintrc.c
 
 ## Creators
 
-**Meliam**
-- https://github.com/meliam
+### Meliam
 
-**Roxana**
-- https://github.com/RoxanaBeresaga
+- <https://github.com/meliam>
 
-**Daniela S. Tochi**
-- https://github.com/DanielaS-Tochi
+### Roxana
+
+- <https://github.com/RoxanaBeresaga>
+
+### Sandra
+
+- <https://github.com/Shalom198424>
+
+### Daniela S. Tochi
+
+- <https://github.com/DanielaS-Tochi>
 
 ## Thanks
 
