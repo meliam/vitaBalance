@@ -75,6 +75,11 @@ export class HudScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset arrays from previous run (handles scene restart/repeat)
+    this.livesTexts = [];
+    this.level3Items = [];
+    this.level3Checks = [];
+
     // Semi-transparent background strip
     const bgGraphics = this.add.graphics();
     bgGraphics.fillStyle(HudScene.BG_COLOR, HudScene.BG_ALPHA);
@@ -427,8 +432,10 @@ export class HudScene extends Phaser.Scene {
       const products = objective.products;
       for (let i = 0; i < products.length; i++) {
         const captured = state.checklist[products[i]] === true;
-        if (this.level3Checks[i]) {
-          this.level3Checks[i].setVisible(captured);
+        const checkEl = this.level3Checks[i];
+        if (checkEl && checkEl.visible !== captured) {
+          console.log(`[HUD L3] ${products[i]}: captured=${captured} checkVisible=${checkEl.visible} -> setting to ${captured}`);
+          checkEl.setVisible(captured);
         }
       }
     }
