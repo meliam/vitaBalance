@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameState, LevelConfig } from '../types/game.types';
 import { GAME_WIDTH, MAX_LIVES } from '../utils/constants';
 import { PRODUCTS } from '../config/products';
+import { StorageService } from '../services/storage-service';
 
 /**
  * HudScene — Overlay UI displayed during gameplay.
@@ -51,6 +52,11 @@ export class HudScene extends Phaser.Scene {
   // ─── Pause Button ────────────────────────────────────────────────────────────
   private pauseBtn!: Phaser.GameObjects.Container;
 
+  // ─── Sound Toggle Button ─────────────────────────────────────────────────────
+  private soundBtn!: Phaser.GameObjects.Container;
+  private soundIcon!: Phaser.GameObjects.Text;
+  private soundMuted = false;
+
   // ─── Constants ───────────────────────────────────────────────────────────────
   private static readonly HUD_HEIGHT = 48;
   private static readonly BAR_WIDTH = 120;
@@ -75,6 +81,11 @@ export class HudScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset arrays from previous run (handles scene restart/repeat)
+    this.livesTexts = [];
+    this.level3Items = [];
+    this.level3Checks = [];
+
     // Semi-transparent background strip
     const bgGraphics = this.add.graphics();
     bgGraphics.fillStyle(HudScene.BG_COLOR, HudScene.BG_ALPHA);
@@ -86,6 +97,7 @@ export class HudScene extends Phaser.Scene {
     this.createTimerDisplay();
     this.createBalanceBar();
     this.createComboDisplay();
+    this.createSoundButton();
     this.createPauseButton();
     this.createPowerupIndicator();
     this.createObjectiveDisplay();
@@ -174,6 +186,41 @@ export class HudScene extends Phaser.Scene {
     this.comboText.setOrigin(0.5, 0.5);
     this.comboContainer.add(this.comboText);
     this.comboContainer.setVisible(false);
+  }
+
+  private createSoundButton(): void {
+    // Read current mute state
+    this.soundMuted = this.sound.mute;
+
+    this.soundBtn = this.add.container(GAME_WIDTH - 80, HudScene.HUD_HEIGHT / 2);
+
+    const btnBg = this.add.graphics();
+    btnBg.fillStyle(0x455a64, 1);
+    btnBg.fillCircle(0, 0, 18);
+    this.soundBtn.add(btnBg);
+
+    this.soundIcon = this.add.text(0, 0, this.soundMuted ? '🔇' : '🔊', {
+      fontSize: '16px',
+      align: 'center',
+    });
+    this.soundIcon.setOrigin(0.5, 0.5);
+    this.soundBtn.add(this.soundIcon);
+
+    // Use a Zone for reliable click detection
+    const hitZone = this.add.zone(0, 0, 44, 44);
+    hitZone.setInteractive({ useHandCursor: true });
+    hitZone.on('pointerdown', () => {
+      this.soundMuted = !this.soundMuted;
+      this.sound.mute = this.soundMuted;
+      this.soundIcon.setText(this.soundMuted ? '🔇' : '🔊');
+
+      // Persist the music setting
+      const settings = StorageService.getSettings();
+      settings.musicEnabled = !this.soundMuted;
+      StorageService.saveSettings(settings);
+      this.registry.set('musicEnabled', !this.soundMuted);
+    });
+    this.soundBtn.add(hitZone);
   }
 
   private createPauseButton(): void {
@@ -427,8 +474,10 @@ export class HudScene extends Phaser.Scene {
       const products = objective.products;
       for (let i = 0; i < products.length; i++) {
         const captured = state.checklist[products[i]] === true;
-        if (this.level3Checks[i]) {
-          this.level3Checks[i].setVisible(captured);
+        const checkEl = this.level3Checks[i];
+        if (checkEl && checkEl.visible !== captured) {
+          console.log(`[HUD L3] ${products[i]}: captured=${captured} checkVisible=${checkEl.visible} -> setting to ${captured}`);
+          checkEl.setVisible(captured);
         }
       }
     }
