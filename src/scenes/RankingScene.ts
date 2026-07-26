@@ -123,22 +123,24 @@ export class RankingScene extends Phaser.Scene {
     this.tabButtons.forEach((btn) => btn.destroy());
     this.tabButtons = [];
 
-    // Remove tab buttons from focusable elements (keep back button which is the last one)
+    // Remove only tab buttons from focusable (keep back button at end)
     const backBtn = this.focusableElements[this.focusableElements.length - 1];
-    this.focusableElements.forEach((btn) => btn.setFocused(false));
+    this.focusableElements.forEach((btn) => {
+      if (btn && btn.scene) btn.setFocused(false);
+    });
     this.focusableElements = [];
 
     this.createLevelTabs();
 
-    // Re-add back button
-    if (backBtn) {
+    // Re-add the existing back button
+    if (backBtn && backBtn.scene) {
       this.focusableElements.push(backBtn);
     }
 
-    // Reset focus
-    this.focusIndex = 0;
-    if (this.focusableElements.length > 0) {
-      this.focusableElements[0].setFocused(true);
+    // Set focus on the active tab (selectedLevel - 1 is the index)
+    this.focusIndex = this.selectedLevel - 1;
+    if (this.focusableElements[this.focusIndex]) {
+      this.focusableElements[this.focusIndex].setFocused(true);
     }
   }
 
@@ -310,9 +312,10 @@ export class RankingScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Set initial focus
-    if (this.focusableElements.length > 0) {
-      this.focusableElements[0].setFocused(true);
+    // Set initial focus on the selected level tab
+    this.focusIndex = this.selectedLevel - 1;
+    if (this.focusableElements[this.focusIndex]) {
+      this.focusableElements[this.focusIndex].setFocused(true);
     }
   }
 
