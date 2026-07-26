@@ -94,25 +94,15 @@ export class Toggle extends Phaser.GameObjects.Container {
     this.drawTrack();
     this.drawKnob();
 
-    // Set interactive hit area with minimum touch target
+    // Set interactive hit area using a Zone for reliable click detection
     const hitWidth = Math.max(Toggle.TRACK_WIDTH, MIN_TOUCH_TARGET);
     const hitHeight = Math.max(Toggle.TRACK_HEIGHT, MIN_TOUCH_TARGET);
     this.setSize(hitWidth, hitHeight);
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(
-        -hitWidth / 2,
-        -hitHeight / 2,
-        hitWidth,
-        hitHeight,
-      ),
-      Phaser.Geom.Rectangle.Contains,
-    );
 
-    // Pointer event handler
-    this.on('pointerdown', this.handlePointerDown, this);
-
-    // Listen for keyboard events (Enter key when focused)
-    scene.input.keyboard?.on('keydown-ENTER', this.handleKeyEnter, this);
+    const hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, hitWidth, hitHeight);
+    hitZone.setInteractive({ useHandCursor: true });
+    hitZone.on('pointerdown', this.handlePointerDown, this);
+    this.add(hitZone);
 
     // Add to scene
     scene.add.existing(this);
@@ -157,10 +147,16 @@ export class Toggle extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Programmatically activate (toggle) the switch. Used by parent scenes for keyboard handling.
+   */
+  activate(): void {
+    this.toggle();
+  }
+
+  /**
    * Clean up keyboard listener on destroy.
    */
   destroy(fromScene?: boolean): void {
-    this.scene?.input.keyboard?.off('keydown-ENTER', this.handleKeyEnter, this);
     super.destroy(fromScene);
   }
 
@@ -194,6 +190,12 @@ export class Toggle extends Phaser.GameObjects.Container {
 
   private animateKnob(): void {
     const targetX = this.getKnobX();
+
+    // Guard: if scene was destroyed, just redraw without animation
+    if (!this.scene) {
+      this.drawKnob();
+      return;
+    }
 
     // Use a tween to animate knob position
     this.scene.tweens.addCounter({
@@ -254,7 +256,7 @@ export class Toggle extends Phaser.GameObjects.Container {
     this.toggle();
   }
 
-  private handleKeyEnter(): void {
+  private handleKeyActivate(): void {
     if (!this.focused) return;
     this.toggle();
   }

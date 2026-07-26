@@ -272,7 +272,7 @@ export class MenuScene extends Phaser.Scene {
     const howToBtn = new Button(this, {
       x: layout.howToPlayButton.x,
       y: layout.howToPlayButton.y,
-      text: '?  Cómo jugar',
+      text: '¿Cómo jugar?',
       color: '#22c55e',
       width: layout.howToPlayButton.width,
       height: layout.howToPlayButton.height,

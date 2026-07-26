@@ -32,6 +32,10 @@ export class SettingsScene extends Phaser.Scene {
   create(): void {
     this.settings = StorageService.getSettings();
 
+    // Reset arrays from previous scene execution
+    this.focusableElements = [];
+    this.focusIndex = 0;
+
     this.createBackground();
     this.createTitle();
     this.createSettingsPanel();
@@ -284,6 +288,32 @@ export class SettingsScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene');
     });
+
+    // Handle Enter/Space centrally — activate the focused element
+    this.input.keyboard?.on('keydown-ENTER', () => {
+      console.log('[Settings] ENTER pressed, focusIndex:', this.focusIndex);
+      this.activateFocused();
+    });
+    this.input.keyboard?.on('keydown-SPACE', (event: KeyboardEvent) => {
+      event.preventDefault();
+      console.log('[Settings] SPACE pressed, focusIndex:', this.focusIndex);
+      this.activateFocused();
+    });
+
+    // Set initial focus
+    if (this.focusableElements.length > 0) {
+      this.focusIndex = 0;
+      this.focusableElements[0].setFocused(true);
+    }
+  }
+
+  private activateFocused(): void {
+    const focused = this.focusableElements[this.focusIndex];
+    if (!focused) return;
+    if (focused instanceof Toggle) {
+      focused.activate();
+    }
+    // Buttons handle Enter via their own listener (handleKeyEnter checks this.focused)
   }
 
   private cycleFocus(direction: number): void {
