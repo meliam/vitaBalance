@@ -180,7 +180,7 @@ Todo el código TypeScript debe seguir los estándares definidos en `.eslintrc.c
 - Phaser 3 por el motor de juego 2D que hace posible este proyecto.
 - Kiro por el desarrollo spec-driven y la asistencia de IA.
 - fast-check por el framework de property-based testing.
-- Nuestro equipo de testers: Hannah (11), Julian (9) y Josias (7) — quienes probaron el juego incansablemente y nos ayudaron a encontrar bugs reales.
+- Nuestro equipo de testers: Hannah (11), Julián (9), Josías (7), Ezequiel y Débora — quienes probaron el juego incansablemente y nos ayudaron a encontrar bugs reales.
 
 ## Copyright and license
 
