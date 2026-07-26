@@ -1,0 +1,53 @@
+﻿diff --git a/src/ui/Button.ts b/src/ui/Button.ts
+index e46f8fa..b10765f 100644
+--- a/src/ui/Button.ts
++++ b/src/ui/Button.ts
+@@ -74,7 +74,6 @@ export class Button extends Phaser.GameObjects.Container {
+     this.add(this.label);
+ 
+     // Use a Zone for reliable hit detection (Phaser best practice for Containers)
+-    // Zone is centered at (0,0) relative to this container
+     this.hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, this.btnWidth, this.btnHeight);
+     this.hitZone.setInteractive({ useHandCursor: true });
+     this.add(this.hitZone);
+@@ -89,7 +88,7 @@ export class Button extends Phaser.GameObjects.Container {
+       this.pressCallback = config.onClick;
+     }
+ 
+-    // Listen for keyboard events (Enter + Space when focused) unless disabled
++    // Listen for keyboard events (Enter + Space) when not disabled
+     if (this.keyboardEnabled) {
+       scene.input.keyboard?.on('keydown-ENTER', this.handleKeyActivate, this);
+       scene.input.keyboard?.on('keydown-SPACE', this.handleKeyActivate, this);
+@@ -168,7 +167,7 @@ export class Button extends Phaser.GameObjects.Container {
+   }
+ 
+   /**
+-   * Clean up all keyboard listeners on destroy.
++   * Clean up all listeners on destroy.
+    */
+   destroy(fromScene?: boolean): void {
+     if (this.keyboardEnabled) {
+@@ -197,7 +196,7 @@ export class Button extends Phaser.GameObjects.Container {
+         this.btnWidth, this.btnHeight, radius,
+       );
+     } else {
+-      // Solid filled background (default)
++      // Solid filled background
+       this.bg.fillStyle(color, 1);
+       this.bg.fillRoundedRect(
+         -this.btnWidth / 2, -this.btnHeight / 2,
+@@ -218,11 +217,8 @@ export class Button extends Phaser.GameObjects.Container {
+ 
+     this.focusRing.lineStyle(Button.FOCUS_RING_WIDTH, 0xffcc00, 1);
+     this.focusRing.strokeRoundedRect(
+-      -ringWidth / 2,
+-      -ringHeight / 2,
+-      ringWidth,
+-      ringHeight,
+-      radius,
++      -ringWidth / 2, -ringHeight / 2,
++      ringWidth, ringHeight, radius,
+     );
+   }
+ 

@@ -1,0 +1,196 @@
+﻿diff --git a/src/scenes/HudScene.ts b/src/scenes/HudScene.ts
+index 805e2f0..f5dcb6f 100644
+--- a/src/scenes/HudScene.ts
++++ b/src/scenes/HudScene.ts
+@@ -191,17 +191,20 @@ export class HudScene extends Phaser.Scene {
+     pauseIcon.setOrigin(0.5, 0.5);
+     this.pauseBtn.add(pauseIcon);
+ 
+-    // Use a Zone for reliable click detection (same pattern as Button)
+-    const hitZone = this.add.zone(0, 0, 44, 44);
+-    hitZone.setInteractive({ useHandCursor: true });
+-    hitZone.on('pointerdown', () => {
++    // Interactive
++    this.pauseBtn.setSize(44, 44);
++    this.pauseBtn.setInteractive(
++      new Phaser.Geom.Circle(0, 0, 22),
++      Phaser.Geom.Circle.Contains,
++    );
++    this.pauseBtn.on('pointerup', () => {
++      // Pause the level scene
+       const levelScene = this.scene.get('LevelScene');
+       if (levelScene && levelScene.scene.isActive()) {
+         levelScene.scene.launch('PauseScene');
+         levelScene.scene.pause();
+       }
+     });
+-    this.pauseBtn.add(hitZone);
+   }
+ 
+   private createPowerupIndicator(): void {
+@@ -231,7 +234,7 @@ export class HudScene extends Phaser.Scene {
+     // Objective background strip
+     const objBg = this.add.graphics();
+     objBg.fillStyle(HudScene.BG_COLOR, 0.7);
+-    objBg.fillRect(0, 0, GAME_WIDTH, 36);
++    objBg.fillRect(0, 0, GAME_WIDTH, 28);
+     this.objectiveContainer.add(objBg);
+ 
+     const levelId = this.levelConfig.id;
+@@ -246,7 +249,7 @@ export class HudScene extends Phaser.Scene {
+   }
+ 
+   private createLevel1Objective(): void {
+-    this.level1Text = this.add.text(GAME_WIDTH / 2, 18, '0/8 🍎', {
++    this.level1Text = this.add.text(GAME_WIDTH / 2, 14, '0/8 🍎', {
+       ...HudScene.TEXT_STYLE,
+       fontSize: '14px',
+     });
+@@ -255,7 +258,7 @@ export class HudScene extends Phaser.Scene {
+   }
+ 
+   private createLevel2Objective(): void {
+-    const y = 18;
++    const y = 14;
+     const spacing = 200;
+     const startX = GAME_WIDTH / 2 - spacing;
+ 
+@@ -298,7 +301,7 @@ export class HudScene extends Phaser.Scene {
+       const emoji = productConfig?.emoji ?? '🍎';
+ 
+       // Product emoji
+-      const itemText = this.add.text(startX + i * spacing, 18, emoji, {
++      const itemText = this.add.text(startX + i * spacing, 14, emoji, {
+         fontSize: '18px',
+         align: 'center',
+       });
+@@ -307,7 +310,7 @@ export class HudScene extends Phaser.Scene {
+       this.level3Items.push(itemText);
+ 
+       // Check overlay (hidden initially)
+-      const checkText = this.add.text(startX + i * spacing, 18, '✓', {
++      const checkText = this.add.text(startX + i * spacing, 14, '✓', {
+         fontSize: '14px',
+         color: '#4caf50',
+         fontStyle: 'bold',
+diff --git a/src/scenes/LevelScene.ts b/src/scenes/LevelScene.ts
+index 7db52e3..a3a6dcd 100644
+--- a/src/scenes/LevelScene.ts
++++ b/src/scenes/LevelScene.ts
+@@ -27,7 +27,6 @@ import {
+   POWERUP_SPEED_FACTOR,
+   FLASH_DURATION,
+   FLASH_OPACITY,
+-  REDUCED_MOTION_SPEED_FACTOR,
+ } from '../utils/constants';
+ 
+ /**
+@@ -139,7 +138,7 @@ export class LevelScene extends Phaser.Scene {
+     }
+ 
+     // Reset power-up state
+-    this.speedMultiplier = this.reduceMotion ? REDUCED_MOTION_SPEED_FACTOR : 1.0;
++    this.speedMultiplier = 1.0;
+     this.powerupActive = false;
+     this.powerupTimerEvent = null;
+   }
+@@ -165,9 +164,7 @@ export class LevelScene extends Phaser.Scene {
+     // Initialize audio system with saved settings
+     const settings = StorageService.getSettings();
+     this.audioSystem.init(this, { musicEnabled: settings.musicEnabled, volume: settings.volume });
+-    if (settings.musicEnabled && !this.sound.mute) {
+-      this.audioSystem.playMusic('bgm-level');
+-    }
++    this.audioSystem.playMusic('bgm-level');
+ 
+     // Create player with current outfit
+     const progress = StorageService.getProgress();
+@@ -580,10 +577,7 @@ export class LevelScene extends Phaser.Scene {
+ 
+     // Start expiry timer
+     this.powerupTimerEvent = this.time.delayedCall(POWERUP_DURATION, () => {
+-      const baseSpeed = (this.registry.get('reduceMotion') as boolean)
+-        ? REDUCED_MOTION_SPEED_FACTOR
+-        : 1.0;
+-      this.speedMultiplier = baseSpeed;
++      this.speedMultiplier = 1.0;
+       this.powerupActive = false;
+       this.state.powerupActive = false;
+       this.state.powerupTimeRemaining = 0;
+diff --git a/src/scenes/PreloadScene.ts b/src/scenes/PreloadScene.ts
+index 5d41217..72f2e0c 100644
+--- a/src/scenes/PreloadScene.ts
++++ b/src/scenes/PreloadScene.ts
+@@ -38,24 +38,13 @@ export class PreloadScene extends Phaser.Scene {
+   async create(): Promise<void> {
+     this.generateFallbackTextures();
+ 
+-    // Generate custom product textures (zapallo drawn with Graphics)
+-    try {
+-      PumpkinGraphic.generateTexture(this);
+-    } catch (err) {
+-      console.warn('[VitaBalance] No se pudo generar la textura del zapallo. Se usará emoji como fallback.', err);
+-    }
++    // Generate custom product textures (zapallo pumpkin drawn with Graphics)
++    PumpkinGraphic.generateTexture(this, 32);
+ 
+-    // Initialize settings in registry from saved data or OS preference
++    // Initialize reduceMotion in registry from settings or OS preference
+     const settings = StorageService.getSettings();
+     const reduceMotion = getReducedMotionSetting(settings);
+     this.registry.set('reduceMotion', reduceMotion);
+-    this.registry.set('musicEnabled', settings.musicEnabled);
+-
+-    // Apply music mute state globally on startup
+-    this.sound.mute = !settings.musicEnabled;
+-
+-    // Apply reduce-motion CSS class
+-    document.documentElement.classList.toggle('reduce-motion', reduceMotion);
+ 
+     // Load web fonts before transitioning (with timeout fallback)
+     await PreloadScene.loadFonts();
+diff --git a/src/scenes/SettingsScene.ts b/src/scenes/SettingsScene.ts
+index 9634de1..f5b027d 100644
+--- a/src/scenes/SettingsScene.ts
++++ b/src/scenes/SettingsScene.ts
+@@ -32,12 +32,6 @@ export class SettingsScene extends Phaser.Scene {
+   create(): void {
+     this.settings = StorageService.getSettings();
+ 
+-    // Sync reduceMotion with registry (which may reflect OS preference)
+-    const registryReduceMotion = this.registry.get('reduceMotion') as boolean | undefined;
+-    if (registryReduceMotion !== undefined) {
+-      this.settings.reduceMotion = registryReduceMotion;
+-    }
+-
+     this.createBackground();
+     this.createTitle();
+     this.createSettingsPanel();
+@@ -90,8 +84,6 @@ export class SettingsScene extends Phaser.Scene {
+         this.settings.reduceMotion = value;
+         this.saveSettings();
+         this.registry.set('reduceMotion', value);
+-        // Update the OS-level CSS class to signal reduced motion
+-        document.documentElement.classList.toggle('reduce-motion', value);
+       },
+     });
+     this.focusableElements.push(reduceMotionToggle);
+@@ -113,9 +105,6 @@ export class SettingsScene extends Phaser.Scene {
+       onChange: (value: boolean) => {
+         this.settings.musicEnabled = value;
+         this.saveSettings();
+-        // Apply music toggle globally: mute/unmute the Phaser sound manager
+-        this.sound.mute = !value;
+-        this.registry.set('musicEnabled', value);
+       },
+     });
+     this.focusableElements.push(musicToggle);
+@@ -274,8 +263,6 @@ export class SettingsScene extends Phaser.Scene {
+     this.settings.volume = newVolume;
+     this.volumeText.setText(this.formatVolume(newVolume));
+     this.saveSettings();
+-    // Apply volume change globally to the Phaser sound manager
+-    this.sound.volume = newVolume;
+   }
+ 
+   private formatVolume(volume: number): string {

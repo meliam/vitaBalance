@@ -5,46 +5,55 @@ import { Player } from '../entities/Player';
 import { StorageService } from '../services/storage-service';
 import { isLevelUnlocked } from '../systems/progress-system';
 import { LEVELS } from '../config/levels';
+import { PRODUCTS } from '../config/products';
+import { getReducedMotionSetting } from '../utils/accessibility';
+import { computeHomeLayout } from './menu/HomeLayout';
+import { HomeAnimations } from './menu/HomeAnimations';
+import { HomeAccessibility } from './menu/HomeAccessibility';
+import type { HomeLayoutResult } from './menu/HomeLayout';
+import type { A11yButtonPosition } from './menu/HomeAccessibility';
 import type { LevelConfig, ProgressData } from '../types/game.types';
 
 /**
  * MenuScene — Main menu with inline sub-states:
- *   - 'menu': Title, avatar, play/how-to-play buttons
+ *   - 'menu': Animated Home with floating fruits, avatar, buttons
  *   - 'missionSelect': 3 level cards (locked/unlocked)
  *   - 'objectiveScreen': Level goal + start button
  *
- * Buttons are NOT nested inside sub-containers to avoid Phaser hit-test issues.
- * Instead, buttons are managed in arrays with manual visibility control.
- *
- * @see Requirements 13.1–13.5, 15.1, 22.6
+ * Uses Scale.FIT with fixed 1280×520 canvas. All positions use GAME_WIDTH/GAME_HEIGHT.
+ * The Home sub-state uses HomeLayout, HomeAnimations, and HomeAccessibility modules.
+ * Cleanup is performed on sub-state transitions.
  */
 export class MenuScene extends Phaser.Scene {
   private currentState: 'menu' | 'missionSelect' | 'objectiveScreen' = 'menu';
   private selectedLevel: LevelConfig | null = null;
   private progress!: ProgressData;
+  private reduceMotion = false;
 
-  // Visual-only containers (backgrounds, text — NO interactive elements)
-  private menuBg!: Phaser.GameObjects.Graphics;
-  private missionBg!: Phaser.GameObjects.Graphics;
-  private objectiveBg!: Phaser.GameObjects.Graphics;
+  // Home sub-state modules
+  private homeAnimations: HomeAnimations | null = null;
+  private homeAccessibility: HomeAccessibility | null = null;
+  private homeLayout: HomeLayoutResult | null = null;
 
-  // Player avatar (decorative)
-  private player!: Player;
+  // Home decorative elements (destroyed on sub-state exit)
+  private homeDecorations: Phaser.GameObjects.GameObject[] = [];
+  private homeFloatingFruits: Phaser.GameObjects.Text[] = [];
+  private homeStars: Phaser.GameObjects.Text[] = [];
+  private player: Player | null = null;
 
-  // Buttons per state (managed independently, not in containers)
+  // Home buttons (pointer-only, keyboard handled by HTML layer)
   private menuButtons: Button[] = [];
-  private missionButtons: Button[] = [];
-  private objectiveButtons: Button[] = [];
-  private navButtons: Phaser.GameObjects.Container[] = [];
 
-  // Non-interactive display elements per state
-  private menuElements: Phaser.GameObjects.GameObject[] = [];
+  // Mission select state
   private missionElements: Phaser.GameObjects.GameObject[] = [];
-  private objectiveElements: Phaser.GameObjects.GameObject[] = [];
+  private missionButtons: Button[] = [];
 
-  // Focusable elements for keyboard navigation
-  private focusableElements: Button[] = [];
-  private focusIndex = 0;
+  // Objective screen state
+  private objectiveElements: Phaser.GameObjects.GameObject[] = [];
+  private objectiveButtons: Button[] = [];
+
+  // Shared background
+  private backgroundGfx: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -52,136 +61,338 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     this.progress = StorageService.getProgress();
+    const settings = StorageService.getSettings();
+    this.reduceMotion = getReducedMotionSetting(settings);
 
-    // Reset button/element arrays (scene may be restarted, clearing stale references)
+    // Reset all arrays
     this.menuButtons = [];
-    this.missionButtons = [];
-    this.objectiveButtons = [];
-    this.objectiveElements = [];
-    this.menuElements = [];
     this.missionElements = [];
-    this.navButtons = [];
-    this.focusableElements = [];
-    this.focusIndex = 0;
-
-    this.createBackgrounds();
-    this.createNavBar();
-    this.createMainMenu();
-    this.createMissionSelect();
+    this.missionButtons = [];
+    this.objectiveElements = [];
+    this.objectiveButtons = [];
+    this.homeDecorations = [];
+    this.homeFloatingFruits = [];
+    this.homeStars = [];
 
     this.showState('menu');
-    this.setupKeyboardNavigation();
   }
 
-  // ─── Backgrounds ─────────────────────────────────────────────────────────────
+  // ─── State Management ────────────────────────────────────────────────────────
 
-  private createBackgrounds(): void {
-    this.menuBg = this.add.graphics();
-    this.menuBg.fillGradientStyle(0x0f2744, 0x0f2744, 0x0a3d1a, 0x0a3d1a, 1);
-    this.menuBg.fillRect(0, 48, GAME_WIDTH, GAME_HEIGHT - 48);
+  private showState(state: 'menu' | 'missionSelect' | 'objectiveScreen'): void {
+    this.cleanupCurrentState();
+    this.currentState = state;
 
-    this.missionBg = this.add.graphics();
-    this.missionBg.fillGradientStyle(0x0f2744, 0x0f2744, 0x1a2a3a, 0x1a2a3a, 1);
-    this.missionBg.fillRect(0, 48, GAME_WIDTH, GAME_HEIGHT - 48);
-
-    this.objectiveBg = this.add.graphics();
-    this.objectiveBg.fillGradientStyle(0x0f2744, 0x0f2744, 0x1a3a2a, 0x1a3a2a, 1);
-    this.objectiveBg.fillRect(0, 48, GAME_WIDTH, GAME_HEIGHT - 48);
-  }
-
-  // ─── Navigation Bar ──────────────────────────────────────────────────────────
-
-  private createNavBar(): void {
-    const barBg = this.add.graphics();
-    barBg.fillStyle(0x1b2838, 0.9);
-    barBg.fillRect(0, 0, GAME_WIDTH, 48);
-    barBg.setDepth(10);
-
-    const navDefs = [
-      { x: GAME_WIDTH - 180, emoji: '👤', action: () => this.scene.start('ProfileScene') },
-      { x: GAME_WIDTH - 120, emoji: '🏆', action: () => this.scene.start('RankingScene') },
-      { x: GAME_WIDTH - 60, emoji: '⚙️', action: () => this.scene.start('SettingsScene') },
-    ];
-
-    for (const def of navDefs) {
-      const container = this.add.container(def.x, 24);
-      const size = MIN_TOUCH_TARGET;
-
-      const bg = this.add.graphics();
-      bg.fillStyle(0x2a3a4a, 1);
-      bg.fillCircle(0, 0, size / 2);
-      container.add(bg);
-
-      const icon = this.add.text(0, 0, def.emoji, { fontSize: '20px' });
-      icon.setOrigin(0.5, 0.5);
-      container.add(icon);
-
-      container.setSize(size, size);
-      container.setInteractive(
-        new Phaser.Geom.Circle(0, 0, size / 2),
-        Phaser.Geom.Circle.Contains,
-      );
-      container.on('pointerdown', def.action);
-      container.setDepth(10);
-      this.navButtons.push(container);
+    switch (state) {
+      case 'menu':
+        this.createHome();
+        break;
+      case 'missionSelect':
+        this.createMissionSelect();
+        break;
+      case 'objectiveScreen':
+        this.createObjectiveScreen();
+        break;
     }
   }
 
-  // ─── Main Menu State ─────────────────────────────────────────────────────────
+  private cleanupCurrentState(): void {
+    switch (this.currentState) {
+      case 'menu':
+        this.cleanupHome();
+        break;
+      case 'missionSelect':
+        this.cleanupMissionSelect();
+        break;
+      case 'objectiveScreen':
+        this.cleanupObjectiveScreen();
+        break;
+    }
+    if (this.backgroundGfx) {
+      this.backgroundGfx.destroy();
+      this.backgroundGfx = null;
+    }
+  }
 
-  private createMainMenu(): void {
-    const title = this.add.text(GAME_WIDTH / 2, 110, 'VitaBalance', {
+  // ─── Home Sub-State ──────────────────────────────────────────────────────────
+
+  private createHome(): void {
+    this.homeLayout = computeHomeLayout();
+    const layout = this.homeLayout;
+
+    // Background gradient
+    this.backgroundGfx = this.add.graphics();
+    this.backgroundGfx.fillGradientStyle(0x0d1b2a, 0x1a3a5c, 0x0d2a1a, 0x0d1b2a, 1);
+    this.backgroundGfx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    this.createFloatingFruits(layout);
+    this.createStars(layout);
+    this.createLogo(layout);
+    this.createAvatar(layout);
+    this.createSlogan(layout);
+    this.createHomeButtons(layout);
+
+    // Animations
+    this.homeAnimations = new HomeAnimations(this, this.reduceMotion);
+    this.homeAnimations.floatFruits(this.homeFloatingFruits);
+    this.homeAnimations.twinkleStars(this.homeStars);
+    if (this.player) {
+      this.homeAnimations.idleAvatar(this.player);
+    }
+
+    // Entrance animation
+    const entranceTargets = this.homeDecorations
+      .filter((obj): obj is Phaser.GameObjects.GameObject & { setAlpha: (a: number) => void; y: number } =>
+        'setAlpha' in obj && 'y' in obj)
+      .map((obj, i) => ({ gameObject: obj, delay: i * 80 }));
+    this.homeAnimations.entranceSequence(entranceTargets);
+
+    // Accessible HTML layer
+    this.homeAccessibility = new HomeAccessibility(this);
+    this.setupHomeAccessibility(layout);
+
+    // Escape listener (no-op on Home, no parent state)
+    this.input.keyboard?.on('keydown-ESC', this.handleHomeEscape, this);
+  }
+
+  private createFloatingFruits(layout: HomeLayoutResult): void {
+    const fruitEmojis = PRODUCTS
+      .filter((p) => p.emoji.length > 0)
+      .slice(0, layout.floatingFruits.length)
+      .map((p) => p.emoji);
+
+    layout.floatingFruits.forEach((pos, i) => {
+      const emoji = fruitEmojis[i % fruitEmojis.length];
+      const fontSize = Math.max(16, 24 * pos.scale);
+      const fruit = this.add.text(pos.x, pos.y, emoji, { fontSize: `${fontSize}px` });
+      fruit.setOrigin(0.5, 0.5);
+      fruit.setAlpha(0.12);
+      fruit.setDepth(0);
+      this.homeFloatingFruits.push(fruit);
+    });
+  }
+
+  private createStars(layout: HomeLayoutResult): void {
+    layout.stars.forEach((pos) => {
+      const fontSize = Math.max(10, 14 * pos.scale);
+      const star = this.add.text(pos.x, pos.y, '★', {
+        fontSize: `${fontSize}px`,
+        color: '#ffd700',
+      });
+      star.setOrigin(0.5, 0.5);
+      star.setAlpha(0.5);
+      star.setDepth(0);
+      this.homeStars.push(star);
+    });
+  }
+
+  private createLogo(layout: HomeLayoutResult): void {
+    const leaf = this.add.text(layout.logoLeaf.x, layout.logoLeaf.y, '🌿', {
+      fontSize: '32px',
+    }).setOrigin(0.5, 0.5);
+    this.homeDecorations.push(leaf);
+
+    const title = this.add.text(layout.logoText.x, layout.logoText.y, 'VitaBalance', {
       fontFamily: 'Fredoka One, sans-serif',
-      fontSize: '48px',
-      color: '#4ecdc4',
+      fontSize: `${layout.logoFontSize}px`,
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5, 0.5);
-    this.menuElements.push(title);
+    this.homeDecorations.push(title);
 
-    const subtitle = this.add.text(GAME_WIDTH / 2, 155, 'Guardianes de las Estaciones', {
-      fontFamily: 'Nunito, sans-serif',
-      fontSize: '22px',
-      color: '#a0d8d0',
+    const bolt = this.add.text(layout.logoBolt.x, layout.logoBolt.y, '⚡', {
+      fontSize: '32px',
     }).setOrigin(0.5, 0.5);
-    this.menuElements.push(subtitle);
+    this.homeDecorations.push(bolt);
 
-    // Player avatar (decorative)
-    this.player = new Player(this, GAME_WIDTH / 2, 260);
+    const subtitle = this.add.text(
+      layout.subtitle.x, layout.subtitle.y,
+      'GUARDIANES DE LAS ESTACIONES', {
+        fontFamily: 'Nunito, sans-serif',
+        fontSize: `${layout.subtitleFontSize}px`,
+        color: '#4ecdc4',
+        letterSpacing: 3,
+      },
+    ).setOrigin(0.5, 0.5);
+    this.homeDecorations.push(subtitle);
+  }
+
+  private createAvatar(layout: HomeLayoutResult): void {
+    this.player = new Player(this, layout.avatar.x, layout.avatar.y);
     this.player.setOutfit(this.progress.outfitLevel);
     this.player.disableTouchInput();
-    this.menuElements.push(this.player);
+    this.player.setScale(layout.avatar.size / 80);
+    this.homeDecorations.push(this.player);
 
-    // Buttons (direct children of scene, NOT in a container)
-    this.menuButtons.push(new Button(this, {
-      x: GAME_WIDTH / 2, y: 370, text: '¡Jugar!',
-      color: '#4CAF50', width: 200, height: 56, fontSize: 24,
-      onClick: () => this.showState('missionSelect'),
-    }));
+    const leftFruit = this.add.text(
+      layout.fruitLeft.x, layout.fruitLeft.y, '🍊',
+      { fontSize: `${Math.max(20, 30 * layout.fruitLeft.scale)}px` },
+    ).setOrigin(0.5, 0.5);
+    this.homeDecorations.push(leftFruit);
+    this.homeFloatingFruits.push(leftFruit);
 
-    this.menuButtons.push(new Button(this, {
-      x: GAME_WIDTH / 2, y: 440, text: 'Cómo jugar',
-      color: '#2196F3', width: 200, height: 50, fontSize: 20,
-      onClick: () => this.scene.start('HowToPlayScene'),
-    }));
-
-    this.menuButtons.push(new Button(this, {
-      x: GAME_WIDTH / 2, y: 500, text: '⚙️ Ajustes',
-      color: '#607D8B', width: 160, height: 44, fontSize: 16,
-      onClick: () => this.scene.start('SettingsScene'),
-    }));
+    const rightFruit = this.add.text(
+      layout.fruitRight.x, layout.fruitRight.y, '🥦',
+      { fontSize: `${Math.max(20, 30 * layout.fruitRight.scale)}px` },
+    ).setOrigin(0.5, 0.5);
+    this.homeDecorations.push(rightFruit);
+    this.homeFloatingFruits.push(rightFruit);
   }
+
+  private createSlogan(layout: HomeLayoutResult): void {
+    const slogan = this.add.text(
+      layout.slogan.x, layout.slogan.y,
+      '"No atrapás todo. Tomás decisiones."', {
+        fontFamily: 'Fredoka One, sans-serif',
+        fontSize: `${layout.sloganFontSize}px`,
+        color: '#ffd700',
+        fontStyle: 'bold',
+        align: 'center',
+      },
+    ).setOrigin(0.5, 0.5);
+    this.homeDecorations.push(slogan);
+  }
+
+  private createHomeButtons(layout: HomeLayoutResult): void {
+    // Play button — solid orange, keyboard disabled (HTML handles it)
+    const playBtn = new Button(this, {
+      x: layout.playButton.x,
+      y: layout.playButton.y,
+      text: '▶  ¡Jugar!',
+      color: '#f97316',
+      width: layout.playButton.width,
+      height: layout.playButton.height,
+      fontSize: layout.playButton.fontSize,
+      disableKeyboard: true,
+      onClick: () => this.showState('missionSelect'),
+    });
+    this.menuButtons.push(playBtn);
+
+    // How to play — outline green
+    const howToBtn = new Button(this, {
+      x: layout.howToPlayButton.x,
+      y: layout.howToPlayButton.y,
+      text: '?  Cómo jugar',
+      color: '#22c55e',
+      width: layout.howToPlayButton.width,
+      height: layout.howToPlayButton.height,
+      fontSize: layout.howToPlayButton.fontSize,
+      variant: 'outline',
+      disableKeyboard: true,
+      onClick: () => this.scene.start('HowToPlayScene'),
+    });
+    this.menuButtons.push(howToBtn);
+
+    // Settings button (top-right corner)
+    const settingsBtn = new Button(this, {
+      x: layout.settingsButton.x,
+      y: layout.settingsButton.y,
+      text: '⚙️',
+      color: '#455A64',
+      width: layout.settingsButton.width,
+      height: layout.settingsButton.height,
+      fontSize: 20,
+      disableKeyboard: true,
+      onClick: () => this.scene.start('SettingsScene'),
+    });
+    settingsBtn.setDepth(5);
+    this.menuButtons.push(settingsBtn);
+  }
+
+  private setupHomeAccessibility(layout: HomeLayoutResult): void {
+    if (!this.homeAccessibility) return;
+
+    const positions = new Map<string, A11yButtonPosition>();
+    positions.set('play', {
+      x: layout.playButton.x, y: layout.playButton.y,
+      width: layout.playButton.width, height: layout.playButton.height,
+    });
+    positions.set('howtoplay', {
+      x: layout.howToPlayButton.x, y: layout.howToPlayButton.y,
+      width: layout.howToPlayButton.width, height: layout.howToPlayButton.height,
+    });
+    positions.set('settings', {
+      x: layout.settingsButton.x, y: layout.settingsButton.y,
+      width: layout.settingsButton.width, height: layout.settingsButton.height,
+    });
+
+    this.homeAccessibility.createButtons([
+      {
+        id: 'play',
+        label: 'Jugar — Iniciar selección de misión',
+        action: () => this.showState('missionSelect'),
+        onFocus: () => this.menuButtons[0]?.setFocused(true),
+        onBlur: () => this.menuButtons[0]?.setFocused(false),
+      },
+      {
+        id: 'howtoplay',
+        label: 'Cómo jugar — Ver instrucciones',
+        action: () => this.scene.start('HowToPlayScene'),
+        onFocus: () => this.menuButtons[1]?.setFocused(true),
+        onBlur: () => this.menuButtons[1]?.setFocused(false),
+      },
+      {
+        id: 'settings',
+        label: 'Configuración — Abrir ajustes',
+        action: () => this.scene.start('SettingsScene'),
+        onFocus: () => this.menuButtons[2]?.setFocused(true),
+        onBlur: () => this.menuButtons[2]?.setFocused(false),
+      },
+    ], positions);
+  }
+
+  private cleanupHome(): void {
+    if (this.homeAnimations) {
+      this.homeAnimations.stopAll();
+      this.homeAnimations = null;
+    }
+    if (this.homeAccessibility) {
+      this.homeAccessibility.destroy();
+      this.homeAccessibility = null;
+    }
+    for (const obj of this.homeDecorations) {
+      if (obj && obj.scene) obj.destroy();
+    }
+    this.homeDecorations = [];
+    for (const obj of this.homeFloatingFruits) {
+      if (obj && obj.scene) obj.destroy();
+    }
+    this.homeFloatingFruits = [];
+    for (const obj of this.homeStars) {
+      if (obj && obj.scene) obj.destroy();
+    }
+    this.homeStars = [];
+    for (const btn of this.menuButtons) {
+      if (btn && btn.scene) btn.destroy();
+    }
+    this.menuButtons = [];
+    if (this.player) {
+      this.player.destroy();
+      this.player = null;
+    }
+    this.homeLayout = null;
+    this.input.keyboard?.off('keydown-ESC', this.handleHomeEscape, this);
+  }
+
+  private handleHomeEscape = (): void => {
+    // No-op: Home has no parent state
+  };
 
   // ─── Mission Select Sub-State ────────────────────────────────────────────────
 
   private createMissionSelect(): void {
-    const title = this.add.text(GAME_WIDTH / 2, 90, 'Seleccionar Misión', {
+    // Background
+    this.backgroundGfx = this.add.graphics();
+    this.backgroundGfx.fillGradientStyle(0x0f2744, 0x0f2744, 0x1a2a3a, 0x1a2a3a, 1);
+    this.backgroundGfx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    const title = this.add.text(GAME_WIDTH / 2, 60, 'Seleccionar Misión', {
       fontFamily: 'Fredoka One, sans-serif',
       fontSize: '32px',
       color: '#ffffff',
     }).setOrigin(0.5, 0.5);
     this.missionElements.push(title);
 
-    // Level cards (visual only — buttons are separate)
     const cardWidth = 320;
     const cardHeight = 300;
     const gap = 40;
@@ -190,19 +401,19 @@ export class MenuScene extends Phaser.Scene {
 
     LEVELS.forEach((level, index) => {
       const x = startX + index * (cardWidth + gap);
-      const y = 280;
+      const y = 260;
       const unlocked = isLevelUnlocked(level.id, this.progress);
 
-      // Card background (visual, non-interactive)
       const gfx = this.add.graphics();
-      const color = unlocked ? Phaser.Display.Color.HexStringToColor(level.color).color : 0x4a4a4a;
+      const color = unlocked
+        ? Phaser.Display.Color.HexStringToColor(level.color).color
+        : 0x4a4a4a;
       gfx.fillStyle(color, unlocked ? 0.85 : 0.4);
       gfx.fillRoundedRect(x - cardWidth / 2, y - cardHeight / 2, cardWidth, cardHeight, 16);
       gfx.lineStyle(3, unlocked ? 0xffffff : 0x666666, unlocked ? 0.6 : 0.3);
       gfx.strokeRoundedRect(x - cardWidth / 2, y - cardHeight / 2, cardWidth, cardHeight, 16);
       this.missionElements.push(gfx);
 
-      // Card text
       const titleText = this.add.text(x, y - cardHeight / 2 + 30, level.title, {
         fontFamily: 'Fredoka One, sans-serif', fontSize: '18px',
         color: unlocked ? '#ffffff' : '#999999', align: 'center',
@@ -219,51 +430,82 @@ export class MenuScene extends Phaser.Scene {
 
       const rewardText = this.add.text(x, y + cardHeight / 2 - 70,
         `${level.reward.emoji} ${level.reward.name}`, {
-        fontFamily: 'Nunito, sans-serif', fontSize: '15px',
-        color: unlocked ? '#ffd54f' : '#999999',
-      }).setOrigin(0.5, 0.5);
+          fontFamily: 'Nunito, sans-serif', fontSize: '15px',
+          color: unlocked ? '#ffd54f' : '#999999',
+        }).setOrigin(0.5, 0.5);
       this.missionElements.push(rewardText);
 
       if (unlocked) {
-        // Button at ABSOLUTE position (not inside card container)
         const selectBtn = new Button(this, {
           x, y: y + cardHeight / 2 - 30, text: 'Seleccionar',
-          color: level.color, width: 160, height: 44, fontSize: 16,
+          color: level.color, width: 160, height: MIN_TOUCH_TARGET, fontSize: 16,
           onClick: () => { this.selectedLevel = level; this.showState('objectiveScreen'); },
         });
         this.missionButtons.push(selectBtn);
       } else {
-        const lockGfx = this.add.graphics();
-        lockGfx.fillStyle(0x333333, 0.7);
-        lockGfx.fillCircle(x, y + cardHeight / 2 - 30, 24);
-        this.missionElements.push(lockGfx);
-
-        const lockIcon = this.add.text(x, y + cardHeight / 2 - 30, '🔒', { fontSize: '24px' }).setOrigin(0.5, 0.5);
+        const lockIcon = this.add.text(x, y + cardHeight / 2 - 30, '🔒', {
+          fontSize: '24px',
+        }).setOrigin(0.5, 0.5);
         this.missionElements.push(lockIcon);
       }
     });
 
     // Back button
-    this.missionButtons.push(new Button(this, {
+    const backBtn = new Button(this, {
       x: 100, y: GAME_HEIGHT - 40, text: '← Volver',
-      color: '#455A64', width: 140, height: 44, fontSize: 16,
+      color: '#455A64', width: 140, height: MIN_TOUCH_TARGET, fontSize: 16,
       onClick: () => this.showState('menu'),
-    }));
+    });
+    this.missionButtons.push(backBtn);
+
+    this.setupMissionKeyboard();
   }
+
+  private cleanupMissionSelect(): void {
+    for (const el of this.missionElements) {
+      if (el && el.scene) el.destroy();
+    }
+    this.missionElements = [];
+    for (const btn of this.missionButtons) {
+      if (btn && btn.scene) btn.destroy();
+    }
+    this.missionButtons = [];
+    this.missionFocusIndex = 0;
+    this.input.keyboard?.off('keydown-ESC', this.handleMissionEscape, this);
+    this.input.keyboard?.off('keydown-TAB', this.handleMissionTab, this);
+  }
+
+  private setupMissionKeyboard(): void {
+    this.input.keyboard?.on('keydown-ESC', this.handleMissionEscape, this);
+    this.input.keyboard?.on('keydown-TAB', this.handleMissionTab, this);
+    if (this.missionButtons.length > 0) {
+      this.missionButtons[0].setFocused(true);
+    }
+  }
+
+  private handleMissionEscape = (): void => { this.showState('menu'); };
+  private missionFocusIndex = 0;
+  private handleMissionTab = (event: KeyboardEvent): void => {
+    event.preventDefault();
+    if (this.missionButtons.length === 0) return;
+    this.missionButtons[this.missionFocusIndex]?.setFocused(false);
+    this.missionFocusIndex += event.shiftKey ? -1 : 1;
+    if (this.missionFocusIndex < 0) this.missionFocusIndex = this.missionButtons.length - 1;
+    if (this.missionFocusIndex >= this.missionButtons.length) this.missionFocusIndex = 0;
+    this.missionButtons[this.missionFocusIndex]?.setFocused(true);
+  };
 
   // ─── Objective Screen Sub-State ──────────────────────────────────────────────
 
-  private showObjectiveScreen(): void {
-    // Destroy previous objective elements
-    for (const el of this.objectiveElements) el.destroy();
-    this.objectiveElements = [];
-    for (const btn of this.objectiveButtons) btn.destroy();
-    this.objectiveButtons = [];
-
-    if (!this.selectedLevel) return;
+  private createObjectiveScreen(): void {
+    if (!this.selectedLevel) { this.showState('missionSelect'); return; }
     const level = this.selectedLevel;
 
-    const title = this.add.text(GAME_WIDTH / 2, 110, level.title, {
+    this.backgroundGfx = this.add.graphics();
+    this.backgroundGfx.fillGradientStyle(0x0f2744, 0x0f2744, 0x1a3a2a, 0x1a3a2a, 1);
+    this.backgroundGfx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    const title = this.add.text(GAME_WIDTH / 2, 80, level.title, {
       fontFamily: 'Fredoka One, sans-serif', fontSize: '36px', color: '#ffffff',
     }).setOrigin(0.5, 0.5);
     this.objectiveElements.push(title);
@@ -275,25 +517,59 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5, 0.5);
     this.objectiveElements.push(desc);
 
-    const details = this.add.text(GAME_WIDTH / 2, 290,
+    const details = this.add.text(GAME_WIDTH / 2, 300,
       `⏱ ${level.duration}s  |  🎯 ${level.reward.emoji} ${level.reward.name}`, {
-      fontFamily: 'Nunito, sans-serif', fontSize: '16px', color: '#a0d8d0',
-    }).setOrigin(0.5, 0.5);
+        fontFamily: 'Nunito, sans-serif', fontSize: '16px', color: '#a0d8d0',
+      }).setOrigin(0.5, 0.5);
     this.objectiveElements.push(details);
 
-    // Buttons (absolute position, direct scene children)
     this.objectiveButtons.push(new Button(this, {
       x: GAME_WIDTH / 2, y: 380, text: '¡Comenzar!',
       color: '#4CAF50', width: 220, height: 56, fontSize: 24,
       onClick: () => this.scene.start('LevelScene', { level: level.id }),
     }));
-
     this.objectiveButtons.push(new Button(this, {
       x: GAME_WIDTH / 2, y: 450, text: '← Volver a misiones',
-      color: '#455A64', width: 220, height: 44, fontSize: 16,
+      color: '#455A64', width: 220, height: MIN_TOUCH_TARGET, fontSize: 16,
       onClick: () => this.showState('missionSelect'),
     }));
+
+    this.setupObjectiveKeyboard();
   }
+
+  private cleanupObjectiveScreen(): void {
+    for (const el of this.objectiveElements) {
+      if (el && el.scene) el.destroy();
+    }
+    this.objectiveElements = [];
+    for (const btn of this.objectiveButtons) {
+      if (btn && btn.scene) btn.destroy();
+    }
+    this.objectiveButtons = [];
+    this.objectiveFocusIndex = 0;
+    this.input.keyboard?.off('keydown-ESC', this.handleObjectiveEscape, this);
+    this.input.keyboard?.off('keydown-TAB', this.handleObjectiveTab, this);
+  }
+
+  private setupObjectiveKeyboard(): void {
+    this.input.keyboard?.on('keydown-ESC', this.handleObjectiveEscape, this);
+    this.input.keyboard?.on('keydown-TAB', this.handleObjectiveTab, this);
+    if (this.objectiveButtons.length > 0) {
+      this.objectiveButtons[0].setFocused(true);
+    }
+  }
+
+  private handleObjectiveEscape = (): void => { this.showState('missionSelect'); };
+  private objectiveFocusIndex = 0;
+  private handleObjectiveTab = (event: KeyboardEvent): void => {
+    event.preventDefault();
+    if (this.objectiveButtons.length === 0) return;
+    this.objectiveButtons[this.objectiveFocusIndex]?.setFocused(false);
+    this.objectiveFocusIndex += event.shiftKey ? -1 : 1;
+    if (this.objectiveFocusIndex < 0) this.objectiveFocusIndex = this.objectiveButtons.length - 1;
+    if (this.objectiveFocusIndex >= this.objectiveButtons.length) this.objectiveFocusIndex = 0;
+    this.objectiveButtons[this.objectiveFocusIndex]?.setFocused(true);
+  };
 
   private getObjectiveDescription(level: LevelConfig): string {
     const obj = level.objective;
@@ -309,93 +585,9 @@ export class MenuScene extends Phaser.Scene {
     }
   }
 
-  // ─── State Management ────────────────────────────────────────────────────────
+  // ─── Scene Lifecycle ─────────────────────────────────────────────────────────
 
-  private showState(state: 'menu' | 'missionSelect' | 'objectiveScreen'): void {
-    this.currentState = state;
-
-    // Hide/show backgrounds
-    this.menuBg.setVisible(state === 'menu');
-    this.missionBg.setVisible(state === 'missionSelect');
-    this.objectiveBg.setVisible(state === 'objectiveScreen');
-
-    // Hide/show non-interactive elements
-    const setGroupVisible = (elements: Phaser.GameObjects.GameObject[], visible: boolean) => {
-      for (const el of elements) {
-        (el as unknown as { setVisible: (v: boolean) => void }).setVisible(visible);
-      }
-    };
-    setGroupVisible(this.menuElements, state === 'menu');
-    setGroupVisible(this.missionElements, state === 'missionSelect');
-    setGroupVisible(this.objectiveElements, state === 'objectiveScreen');
-
-    // Hide/show buttons (setVisible override handles interactivity automatically)
-    const setButtonsActive = (buttons: Button[], active: boolean) => {
-      for (const btn of buttons) {
-        if (!btn || !btn.scene) continue;
-        btn.setVisible(active);
-      }
-    };
-    setButtonsActive(this.menuButtons, state === 'menu');
-    setButtonsActive(this.missionButtons, state === 'missionSelect');
-    setButtonsActive(this.objectiveButtons, state === 'objectiveScreen');
-
-    // Create objective screen elements dynamically
-    if (state === 'objectiveScreen') {
-      this.showObjectiveScreen();
-    }
-
-    // Reset focus
-    this.focusIndex = 0;
-    this.updateFocusableElements();
-  }
-
-  // ─── Keyboard Navigation ─────────────────────────────────────────────────────
-
-  private setupKeyboardNavigation(): void {
-    this.input.keyboard?.on('keydown-TAB', (event: KeyboardEvent) => {
-      event.preventDefault();
-      this.cycleFocus(event.shiftKey ? -1 : 1);
-    });
-
-    this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.currentState === 'objectiveScreen') {
-        this.showState('missionSelect');
-      } else if (this.currentState === 'missionSelect') {
-        this.showState('menu');
-      }
-    });
-  }
-
-  private updateFocusableElements(): void {
-    this.focusableElements.forEach((btn) => btn.setFocused(false));
-    this.focusableElements = [];
-
-    // Get the active button group
-    let activeButtons: Button[] = [];
-    switch (this.currentState) {
-      case 'menu': activeButtons = this.menuButtons; break;
-      case 'missionSelect': activeButtons = this.missionButtons; break;
-      case 'objectiveScreen': activeButtons = this.objectiveButtons; break;
-    }
-
-    this.focusableElements = [...activeButtons];
-
-    if (this.focusableElements.length > 0) {
-      this.focusIndex = 0;
-      this.focusableElements[0].setFocused(true);
-    }
-  }
-
-  private cycleFocus(direction: number): void {
-    if (this.focusableElements.length === 0) return;
-
-    this.focusableElements[this.focusIndex]?.setFocused(false);
-
-    this.focusIndex += direction;
-    if (this.focusIndex < 0) this.focusIndex = this.focusableElements.length - 1;
-    else if (this.focusIndex >= this.focusableElements.length) this.focusIndex = 0;
-
-    this.focusableElements[this.focusIndex]?.setFocused(true);
+  shutdown(): void {
+    this.cleanupCurrentState();
   }
 }

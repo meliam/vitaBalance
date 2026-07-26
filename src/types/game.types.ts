@@ -44,6 +44,8 @@ export interface ProductConfig {
   points: number;
   vitaminC?: boolean;
   potassium?: boolean;
+  /** Optional texture key for products that use a custom drawn graphic instead of emoji. */
+  textureKey?: string;
 }
 
 export interface SpawnProbabilities {
@@ -197,6 +199,17 @@ export interface ButtonConfig {
   height?: number;
   fontSize?: number;
   onClick?: () => void;
+  /**
+   * Visual variant: 'filled' (default) renders solid background;
+   * 'outline' renders transparent with colored border.
+   */
+  variant?: 'filled' | 'outline';
+  /**
+   * When true, this button does NOT register Phaser keyboard listeners
+   * (Enter/Space). Use when keyboard interaction is handled externally
+   * (e.g., by the HTML accessible layer).
+   */
+  disableKeyboard?: boolean;
 }
 
 export interface ToastConfig {

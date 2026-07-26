@@ -124,10 +124,11 @@ export const PRODUCTS: ProductConfig[] = [
   {
     id: 'zapallo',
     name: 'Zapallo',
-    emoji: '🎃',
+    emoji: '',
     nutrient: 'Vitamina A y fibra',
     season: 'otono',
     points: 100,
+    textureKey: '__zapallo_gfx__',
   },
   {
     id: 'pera',

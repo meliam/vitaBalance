@@ -138,7 +138,7 @@ const SEASONAL_CONFIGS: SeasonalConfig[] = [
       { emoji: "🍎", name: "Manzana", nutrient: "Producto de otoño" },
       { emoji: "🍐", name: "Pera", nutrient: "Producto de otoño" },
       { emoji: "🍇", name: "Uva", nutrient: "Producto de otoño" },
-      { emoji: "🎃", name: "Zapallo", nutrient: "Producto de otoño" },
+      { emoji: "🟠", name: "Zapallo", nutrient: "Producto de otoño" },
     ],
     explanation: "La frutilla, la lechuga, las arvejas y la espinaca son productos primaverales frecuentes en Argentina.",
   },

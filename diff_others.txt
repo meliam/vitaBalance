@@ -1,0 +1,274 @@
+﻿diff --git a/src/config/products.ts b/src/config/products.ts
+index 0f796d0..048e3a8 100644
+--- a/src/config/products.ts
++++ b/src/config/products.ts
+@@ -124,7 +124,7 @@ export const PRODUCTS: ProductConfig[] = [
+   {
+     id: 'zapallo',
+     name: 'Zapallo',
+-    emoji: '🎃',
++    emoji: '',
+     nutrient: 'Vitamina A y fibra',
+     season: 'otono',
+     points: 100,
+diff --git a/src/entities/Product.ts b/src/entities/Product.ts
+index 1b9e4b1..9f1c5d8 100644
+--- a/src/entities/Product.ts
++++ b/src/entities/Product.ts
+@@ -97,20 +97,21 @@ export class Product extends Phaser.GameObjects.Container {
+     this.setRotation(0);
+     this.setScale(1);
+ 
+-    // Update visual: use custom texture if available, otherwise emoji
++    // Update emoji or custom texture
+     if (config.productConfig.textureKey && this.scene.textures.exists(config.productConfig.textureKey)) {
++      // Use custom drawn texture instead of emoji
+       this.emojiText.setVisible(false);
+       if (!this.customImage) {
+         this.customImage = new Phaser.GameObjects.Image(this.scene, 0, 0, config.productConfig.textureKey);
+         this.customImage.setOrigin(0.5, 0.5);
+-        this.customImage.setDisplaySize(Product.SIZE, Product.SIZE);
+-        // Insert at same z-index as emojiText (above bg/distortion, below spoiled overlay)
+-        this.addAt(this.customImage, this.getIndex(this.emojiText));
+-      } else {
+-        this.customImage.setTexture(config.productConfig.textureKey);
++        this.add(this.customImage);
++        // Move it behind the spoiled overlay but above bg
++        this.moveTo(this.customImage, this.getIndex(this.emojiText));
+       }
++      this.customImage.setTexture(config.productConfig.textureKey);
+       this.customImage.setVisible(true);
+     } else {
++      // Use emoji text
+       this.emojiText.setText(config.productConfig.emoji);
+       this.emojiText.setVisible(true);
+       if (this.customImage) {
+diff --git a/src/ui/ConfettiEffect.ts b/src/ui/ConfettiEffect.ts
+index bfe9e53..30c8d02 100644
+--- a/src/ui/ConfettiEffect.ts
++++ b/src/ui/ConfettiEffect.ts
+@@ -1,4 +1,4 @@
+-import Phaser from 'phaser';
++import type Phaser from 'phaser';
+ import { GAME_WIDTH } from '../utils/constants';
+ 
+ /**
+diff --git a/src/ui/PumpkinGraphic.ts b/src/ui/PumpkinGraphic.ts
+index 9ce3b9f..b572300 100644
+--- a/src/ui/PumpkinGraphic.ts
++++ b/src/ui/PumpkinGraphic.ts
+@@ -11,8 +11,8 @@ import Phaser from 'phaser';
+  * - Aspecto amigable, limpio y moderno
+  *
+  * Usage:
+- *   PumpkinGraphic.generateTexture(scene, 48);
+- *   // Then use the texture key '__zapallo_gfx__' with an Image
++ *   PumpkinGraphic.generateTexture(scene, 'zapallo-texture', 32);
++ *   // Then use the texture key 'zapallo-texture' with an Image
+  */
+ export class PumpkinGraphic {
+   /** Texture key used for the zapallo product */
+@@ -21,14 +21,8 @@ export class PumpkinGraphic {
+   /**
+    * Generate the pumpkin texture if it doesn't exist yet.
+    * Call once during preload or scene creation.
+-   *
+-   * Guards against double-registration via textures.exists() check.
+-   * Creates a temporary Graphics object, generates the texture, then destroys it.
+-   *
+-   * @param scene - Any active Phaser scene (used to access textures and add.graphics)
+-   * @param size - Texture size in pixels. Defaults to 48 to match Product.SIZE (no scaling needed).
+    */
+-  static generateTexture(scene: Phaser.Scene, size = 48): void {
++  static generateTexture(scene: Phaser.Scene, size = 32): void {
+     if (scene.textures.exists(PumpkinGraphic.TEXTURE_KEY)) return;
+ 
+     const s = size;
+@@ -66,12 +60,61 @@ export class PumpkinGraphic {
+     gfx.fillStyle(stemColor, 1);
+     gfx.fillRoundedRect(half - 3, half - s * 0.38, 6, s * 0.18, 2);
+ 
+-    // Small leaf (teardrop shape using ellipse)
++    // Small leaf (teardrop shape using arc + lines)
+     gfx.fillStyle(0x16a34a, 1);
+     gfx.fillEllipse(half + s * 0.1, half - s * 0.35, s * 0.14, s * 0.07);
+ 
+-    // Generate texture from graphics, then destroy the temporary graphics object
++    // Generate texture from graphics
+     gfx.generateTexture(PumpkinGraphic.TEXTURE_KEY, s, s);
+     gfx.destroy();
+   }
++
++  /**
++   * Create a pumpkin as a Container with a drawn graphic.
++   * Useful for inline rendering where a texture isn't pre-generated.
++   */
++  static createContainer(scene: Phaser.Scene, x: number, y: number, size = 32): Phaser.GameObjects.Container {
++    const container = scene.add.container(x, y);
++    const gfx = scene.add.graphics();
++    const s = size;
++    const half = s / 2;
++
++    const bodyColor = 0xf97316;
++    const darkOrange = 0xea580c;
++    const stemColor = 0x22c55e;
++
++    // Back lobe
++    gfx.fillStyle(darkOrange, 1);
++    gfx.fillEllipse(0, 2, s * 0.85, s * 0.72);
++
++    // Main body
++    gfx.fillStyle(bodyColor, 1);
++    gfx.fillEllipse(0, 2, s * 0.7, s * 0.68);
++
++    // Left lobe
++    gfx.fillStyle(darkOrange, 0.6);
++    gfx.fillEllipse(-s * 0.18, 2, s * 0.36, s * 0.6);
++
++    // Right lobe
++    gfx.fillStyle(darkOrange, 0.6);
++    gfx.fillEllipse(s * 0.18, 2, s * 0.36, s * 0.6);
++
++    // Surco line
++    gfx.lineStyle(1, darkOrange, 0.4);
++    gfx.beginPath();
++    gfx.arc(0, 2, s * 0.2, -Math.PI * 0.8, Math.PI * 0.8, false);
++    gfx.strokePath();
++
++    // Stem
++    gfx.fillStyle(stemColor, 1);
++    gfx.fillRoundedRect(-3, -half + 2, 6, s * 0.18, 2);
++
++    // Small leaf (simple ellipse)
++    gfx.fillStyle(0x16a34a, 1);
++    gfx.fillEllipse(s * 0.1, -half + s * 0.08, s * 0.14, s * 0.07);
++
++    container.add(gfx);
++    container.setSize(s, s);
++    return container;
++  }
+ }
+diff --git a/src/ui/Toggle.ts b/src/ui/Toggle.ts
+index 9ba7306..1e27934 100644
+--- a/src/ui/Toggle.ts
++++ b/src/ui/Toggle.ts
+@@ -22,7 +22,6 @@ export class Toggle extends Phaser.GameObjects.Container {
+   private track: Phaser.GameObjects.Graphics;
+   private knob: Phaser.GameObjects.Graphics;
+   private focusRing: Phaser.GameObjects.Graphics;
+-  private hitZone: Phaser.GameObjects.Zone;
+   private labelText: Phaser.GameObjects.Text | null = null;
+ 
+   private value: boolean;
+@@ -46,14 +45,11 @@ export class Toggle extends Phaser.GameObjects.Container {
+   private static readonly FOCUS_RING_WIDTH = 4;
+ 
+   // Animation
+-  private static readonly TWEEN_DURATION = 120;
++  private static readonly TWEEN_DURATION = 150;
+ 
+   // Label spacing
+   private static readonly LABEL_GAP = 12;
+ 
+-  // Active tween reference (to kill on rapid re-toggle)
+-  private knobTween: Phaser.Tweens.Tween | null = null;
+-
+   constructor(scene: Phaser.Scene, config: ToggleConfig) {
+     super(scene, config.x, config.y);
+ 
+@@ -98,16 +94,22 @@ export class Toggle extends Phaser.GameObjects.Container {
+     this.drawTrack();
+     this.drawKnob();
+ 
+-    // Use a Zone for reliable hit detection (same pattern as Button.ts)
+-    // This avoids the Container hit-test issues in Phaser 3
+-    const hitWidth = Toggle.TRACK_WIDTH + 20;
+-    const hitHeight = Math.max(Toggle.TRACK_HEIGHT + 20, MIN_TOUCH_TARGET);
+-    this.hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, hitWidth, hitHeight);
+-    this.hitZone.setInteractive({ useHandCursor: true });
+-    this.add(this.hitZone);
++    // Set interactive hit area with minimum touch target
++    const hitWidth = Math.max(Toggle.TRACK_WIDTH, MIN_TOUCH_TARGET);
++    const hitHeight = Math.max(Toggle.TRACK_HEIGHT, MIN_TOUCH_TARGET);
++    this.setSize(hitWidth, hitHeight);
++    this.setInteractive(
++      new Phaser.Geom.Rectangle(
++        -hitWidth / 2,
++        -hitHeight / 2,
++        hitWidth,
++        hitHeight,
++      ),
++      Phaser.Geom.Rectangle.Contains,
++    );
+ 
+-    // Pointer event handler on the zone
+-    this.hitZone.on('pointerdown', this.handlePointerDown, this);
++    // Pointer event handler
++    this.on('pointerdown', this.handlePointerDown, this);
+ 
+     // Listen for keyboard events (Enter key when focused)
+     scene.input.keyboard?.on('keydown-ENTER', this.handleKeyEnter, this);
+@@ -191,34 +193,25 @@ export class Toggle extends Phaser.GameObjects.Container {
+   }
+ 
+   private animateKnob(): void {
+-    // Kill any in-progress knob tween to prevent conflicts on rapid clicks
+-    if (this.knobTween) {
+-      this.knobTween.stop();
+-      this.knobTween = null;
+-    }
+-
+     const targetX = this.getKnobX();
+-    const startX = this.value
+-      ? -(Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS)
+-      : Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS;
+ 
+     // Use a tween to animate knob position
+-    this.knobTween = this.scene.tweens.addCounter({
++    this.scene.tweens.addCounter({
+       from: 0,
+       to: 1,
+       duration: Toggle.TWEEN_DURATION,
+-      ease: 'Quad.easeOut',
++      ease: 'Quad.easeInOut',
+       onUpdate: (tween) => {
+         const progress = tween.getValue() ?? 0;
++        const startX = this.value
++          ? -(Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS)
++          : Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS;
+         const currentX = Phaser.Math.Linear(startX, targetX, progress);
+ 
+         this.knob.clear();
+         this.knob.fillStyle(Toggle.KNOB_COLOR, 1);
+         this.knob.fillCircle(currentX, 0, Toggle.KNOB_RADIUS);
+       },
+-      onComplete: () => {
+-        this.knobTween = null;
+-      },
+     });
+   }
+ 
+diff --git a/src/utils/constants.ts b/src/utils/constants.ts
+index 78795c8..cd455ab 100644
+--- a/src/utils/constants.ts
++++ b/src/utils/constants.ts
+@@ -3,10 +3,10 @@
+  * No Phaser dependencies — used across systems, scenes, and UI components.
+  */
+ 
+-/** Logical game resolution width in pixels. */
++/** Logical game resolution width in pixels (Scale.FIT canvas). */
+ export const GAME_WIDTH = 1280 as const;
+ 
+-/** Logical game resolution height in pixels. */
++/** Logical game resolution height in pixels (Scale.FIT canvas). */
+ export const GAME_HEIGHT = 520 as const;
+ 
+ /** Minimum touch target size in pixels (WCAG 2.5.5). */
+@@ -29,6 +29,3 @@ export const FLASH_DURATION = 350 as const;
+ 
+ /** Damage screen flash opacity (0–1). */
+ export const FLASH_OPACITY = 0.28 as const;
+-
+-/** Speed multiplier when "Reducir movimiento" is active (same as power-up: 28% of normal). */
+-export const REDUCED_MOTION_SPEED_FACTOR = 0.28 as const;
