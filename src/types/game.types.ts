@@ -165,6 +165,20 @@ export interface SaveData {
   profile: ProfileData;
 }
 
+// ─── Local Ranking Models ─────────────────────────────────────────────────
+
+export interface LocalRankingEntry {
+  alias: string;
+  level: 1 | 2 | 3;
+  vitaScore: number;
+  precision: number;
+  variety: number;
+  matchId: string;
+  createdAt: string;
+}
+
+export type LocalRankingData = Record<string, LocalRankingEntry[]>;
+
 // ─── Audio ───────────────────────────────────────────────────────────────────
 
 export interface AudioSettings {

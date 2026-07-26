@@ -25,10 +25,16 @@ export class VictoryScene extends Phaser.Scene {
   private levelConfig!: LevelConfig;
   private aliasValue = '';
   private audioSystem = new AudioSystem();
+  private matchId!: string;
+  private submitted = false;
 
   // Keyboard navigation
   private focusableElements: Button[] = [];
   private focusIndex = 0;
+
+  // Transition scheduling
+  private transitionBlocked = false;
+  private pendingTransition: Phaser.Time.TimerEvent | null = null;
 
   constructor() {
     super({ key: 'VictoryScene' });
@@ -39,6 +45,13 @@ export class VictoryScene extends Phaser.Scene {
     this.state = data.state;
     this.vitaScore = data.vitaScore;
     this.levelConfig = data.levelConfig;
+    this.matchId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    this.submitted = false;
+    this.focusableElements = [];
+    this.focusIndex = 0;
+    this.transitionBlocked = false;
+    this.pendingTransition = null;
+    this.aliasValue = '';
   }
 
   create(): void {
@@ -286,7 +299,7 @@ export class VictoryScene extends Phaser.Scene {
 
   // ─── Ranking Submission ──────────────────────────────────────────────────────
 
-  private async handleSubmitRanking(): Promise<void> {
+  private handleSubmitRanking(): void {
     const alias = this.aliasValue.trim();
 
     // Validate alias: 1–16 chars, alphanumeric + spaces
@@ -301,36 +314,99 @@ export class VictoryScene extends Phaser.Scene {
       return;
     }
 
+    // Check if already submitted (in-memory flag)
+    if (this.submitted) {
+      Toast.show(this, {
+        text: 'Ya registrado',
+        subtext: 'Este resultado ya fue enviado',
+        color: '#ffaa44',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+      return;
+    }
+
+    // Check if already submitted (localStorage deduplication)
+    if (RankingService.isAlreadySubmitted(this.matchId)) {
+      Toast.show(this, {
+        text: 'Ya registrado',
+        subtext: 'Este resultado ya fue enviado',
+        color: '#ffaa44',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+      return;
+    }
+
     // Save alias to profile
     const profile = StorageService.getProfile();
     profile.nickname = alias;
     StorageService.saveProfile(profile);
 
-    try {
-      await RankingService.submit({
-        alias,
-        level: this.level,
-        vitaScore: this.vitaScore,
-        precision: this.state.precision,
-        variety: this.state.uniqueItems.length,
-      });
+    // Build submission object
+    const submission = {
+      alias,
+      level: this.level,
+      vitaScore: this.vitaScore,
+      precision: this.state.precision,
+      variety: this.state.uniqueItems.length,
+    };
 
-      Toast.show(this, {
-        text: '¡Puntaje enviado!',
-        subtext: 'Tu score está en el ranking',
-        color: '#44ff88',
-        x: GAME_WIDTH / 2,
-        y: GAME_HEIGHT / 2,
-      });
+    // Persist locally — wrap in try/catch to detect save failure
+    try {
+      RankingService.saveLocal(submission, this.matchId);
     } catch {
       Toast.show(this, {
-        text: 'Ranking temporalmente no disponible',
-        subtext: 'Intentá más tarde',
-        color: '#ff8844',
+        text: 'No se pudo guardar',
+        subtext: 'Intentá de nuevo más tarde',
+        color: '#ff6644',
         x: GAME_WIDTH / 2,
         y: GAME_HEIGHT / 2,
       });
+      return;
     }
+
+    // Verify save succeeded by checking localStorage
+    if (!RankingService.isAlreadySubmitted(this.matchId)) {
+      Toast.show(this, {
+        text: 'No se pudo guardar',
+        subtext: 'Intentá de nuevo más tarde',
+        color: '#ff6644',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+      return;
+    }
+
+    this.submitted = true;
+
+    // Show confirmation toast
+    Toast.show(this, {
+      text: '¡Puntaje enviado!',
+      subtext: 'Tu score está en el ranking',
+      color: '#44ff88',
+      x: GAME_WIDTH / 2,
+      y: GAME_HEIGHT / 2,
+    });
+
+    // Fire-and-forget remote submit (don't await before scheduling transition)
+    RankingService.submit(submission);
+
+    // Schedule navigation to RankingScene
+    this.scheduleRankingTransition();
+  }
+
+  // ─── Transition Scheduling ───────────────────────────────────────────────────
+
+  private scheduleRankingTransition(): void {
+    // Disable all interactive buttons
+    this.focusableElements.forEach((btn) => btn.setEnabled(false));
+    this.transitionBlocked = true;
+
+    // Schedule navigation after 2000ms delay
+    this.pendingTransition = this.time.delayedCall(2000, () => {
+      this.scene.start('RankingScene', { level: this.level });
+    });
   }
 
   // ─── Navigation Buttons ──────────────────────────────────────────────────────
@@ -388,11 +464,13 @@ export class VictoryScene extends Phaser.Scene {
 
   private setupKeyboardNavigation(): void {
     this.input.keyboard?.on('keydown-TAB', (event: KeyboardEvent) => {
+      if (this.transitionBlocked) return;
       event.preventDefault();
       this.cycleFocus(event.shiftKey ? -1 : 1);
     });
 
     this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.transitionBlocked) return;
       this.scene.start('MenuScene');
     });
   }
@@ -410,5 +488,14 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     this.focusableElements[this.focusIndex]?.setFocused(true);
+  }
+
+  // ─── Scene Lifecycle ─────────────────────────────────────────────────────────
+
+  shutdown(): void {
+    if (this.pendingTransition) {
+      this.pendingTransition.remove(false);
+      this.pendingTransition = null;
+    }
   }
 }
