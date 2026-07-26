@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { RankingEntry } from '../types/api.types';
+import type { LocalRankingEntry } from '../types/game.types';
 import { Button } from '../ui/Button';
-import { Toast } from '../ui/Toast';
 import { RankingService } from '../services/ranking-service';
 import { GAME_WIDTH, GAME_HEIGHT } from '../utils/constants';
 
@@ -27,8 +27,21 @@ export class RankingScene extends Phaser.Scene {
     super({ key: 'RankingScene' });
   }
 
+<<<<<<< HEAD
   init(data?: { level?: 1 | 2 | 3 }): void {
     this.selectedLevel = data?.level ?? 1;
+=======
+  init(data?: { level?: number }): void {
+    const rawLevel = data?.level;
+    if (rawLevel === 1 || rawLevel === 2 || rawLevel === 3) {
+      this.selectedLevel = rawLevel;
+    } else {
+      this.selectedLevel = 1;
+    }
+    this.tabButtons = [];
+    this.focusableElements = [];
+    this.focusIndex = 0;
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
   }
 
   create(): void {
@@ -119,14 +132,14 @@ export class RankingScene extends Phaser.Scene {
   }
 
   private updateTabHighlights(): void {
-    // Destroy old tabs and recreate them with updated colors
-    this.tabButtons.forEach((btn) => btn.destroy());
-    this.tabButtons = [];
-
-    // Remove tab buttons from focusable elements (keep back button which is the last one)
+    // Remove focus from all elements BEFORE destroying tabs
     const backBtn = this.focusableElements[this.focusableElements.length - 1];
     this.focusableElements.forEach((btn) => btn.setFocused(false));
     this.focusableElements = [];
+
+    // Destroy old tabs and recreate them with updated colors
+    this.tabButtons.forEach((btn) => btn.destroy());
+    this.tabButtons = [];
 
     this.createLevelTabs();
 
@@ -187,30 +200,75 @@ export class RankingScene extends Phaser.Scene {
     // Clear existing entries
     this.entriesContainer.removeAll(true);
 
-    // Show loading state
-    this.loadingText.setVisible(true);
+    // Show local rankings IMMEDIATELY (no waiting for network)
+    const localEntries = RankingService.getLocalRankings(this.selectedLevel);
 
+    if (localEntries.length > 0) {
+      const localAsRanking: RankingEntry[] = localEntries.map((e) => ({
+        alias: e.alias,
+        vitaScore: e.vitaScore,
+        precision: e.precision,
+        variety: e.variety,
+        createdAt: e.createdAt,
+      }));
+      this.displayEntries(localAsRanking);
+    } else {
+      this.loadingText.setVisible(true);
+    }
+
+    // Then fetch remote in background and merge
     try {
-      const entries = await RankingService.getTopScores(this.selectedLevel, 10);
+      const remoteEntries = await RankingService.getTopScores(this.selectedLevel, 10);
+
+      // Merge remote and local entries
+      const merged = this.mergeRankings(remoteEntries, localEntries);
 
       this.loadingText.setVisible(false);
+      this.entriesContainer.removeAll(true);
 
-      if (entries.length === 0) {
+      if (merged.length === 0) {
         this.showEmptyState();
       } else {
-        this.displayEntries(entries);
+        this.displayEntries(merged);
       }
     } catch {
+      // Remote fetch failed — local data is already displayed, nothing more to do
       this.loadingText.setVisible(false);
 
-      Toast.show(this, {
-        text: 'Ranking temporalmente no disponible',
-        subtext: 'Intentá más tarde',
-        color: '#ff8844',
-        x: GAME_WIDTH / 2,
-        y: GAME_HEIGHT / 2,
-      });
+      if (localEntries.length === 0) {
+        this.showEmptyState();
+      }
     }
+  }
+
+  /**
+   * Merges remote and local ranking entries, avoiding duplicates.
+   * A local entry is considered a duplicate if a remote entry has the same alias
+   * and vitaScore. Result is sorted by vitaScore descending, limited to 10.
+   */
+  private mergeRankings(remote: RankingEntry[], local: LocalRankingEntry[]): RankingEntry[] {
+    // Start with remote entries
+    const merged: RankingEntry[] = [...remote];
+
+    // Add local entries that aren't already in remote
+    for (const localEntry of local) {
+      const isDuplicate = remote.some(
+        (r) => r.alias === localEntry.alias && r.vitaScore === localEntry.vitaScore,
+      );
+      if (!isDuplicate) {
+        merged.push({
+          alias: localEntry.alias,
+          vitaScore: localEntry.vitaScore,
+          precision: localEntry.precision,
+          variety: localEntry.variety,
+          createdAt: localEntry.createdAt,
+        });
+      }
+    }
+
+    // Sort by vitaScore descending and take top 10
+    merged.sort((a, b) => b.vitaScore - a.vitaScore);
+    return merged.slice(0, 10);
   }
 
   // ─── Display Entries ─────────────────────────────────────────────────────────

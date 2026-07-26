@@ -26,11 +26,20 @@ export class VictoryScene extends Phaser.Scene {
   private levelConfig!: LevelConfig;
   private aliasInput!: DomInput;
   private audioSystem = new AudioSystem();
+<<<<<<< HEAD
   private isSubmitting = false;
+=======
+  private matchId!: string;
+  private submitted = false;
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
 
   // Keyboard navigation
   private focusableElements: Button[] = [];
   private focusIndex = 0;
+
+  // Transition scheduling
+  private transitionBlocked = false;
+  private pendingTransition: Phaser.Time.TimerEvent | null = null;
 
   constructor() {
     super({ key: 'VictoryScene' });
@@ -41,9 +50,19 @@ export class VictoryScene extends Phaser.Scene {
     this.state = data.state;
     this.vitaScore = data.vitaScore;
     this.levelConfig = data.levelConfig;
+<<<<<<< HEAD
     this.isSubmitting = false;
     this.focusableElements = [];
     this.focusIndex = 0;
+=======
+    this.matchId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    this.submitted = false;
+    this.focusableElements = [];
+    this.focusIndex = 0;
+    this.transitionBlocked = false;
+    this.pendingTransition = null;
+    this.aliasValue = '';
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
   }
 
   create(): void {
@@ -271,11 +290,16 @@ export class VictoryScene extends Phaser.Scene {
 
   // ─── Ranking Submission ──────────────────────────────────────────────────────
 
+<<<<<<< HEAD
   private async handleSubmitRanking(): Promise<void> {
     if (this.isSubmitting) return;
     this.isSubmitting = true;
 
     const alias = this.aliasInput.getValue();
+=======
+  private handleSubmitRanking(): void {
+    const alias = this.aliasValue.trim();
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
 
     // Validate alias: 1–16 chars, alphanumeric + spaces
     if (alias.length < 1 || alias.length > 16 || !/^[a-zA-Z0-9 ]+$/.test(alias)) {
@@ -290,17 +314,47 @@ export class VictoryScene extends Phaser.Scene {
       return;
     }
 
+    // Check if already submitted (in-memory flag)
+    if (this.submitted) {
+      Toast.show(this, {
+        text: 'Ya registrado',
+        subtext: 'Este resultado ya fue enviado',
+        color: '#ffaa44',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+      return;
+    }
+
+    // Check if already submitted (localStorage deduplication)
+    if (RankingService.isAlreadySubmitted(this.matchId)) {
+      Toast.show(this, {
+        text: 'Ya registrado',
+        subtext: 'Este resultado ya fue enviado',
+        color: '#ffaa44',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+      return;
+    }
+
     // Save alias to profile
     const profile = StorageService.getProfile();
     profile.nickname = alias;
     StorageService.saveProfile(profile);
 
+<<<<<<< HEAD
     const success = await RankingService.submit({
+=======
+    // Build submission object
+    const submission = {
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
       alias,
       level: this.level,
       vitaScore: this.vitaScore,
       precision: this.state.precision,
       variety: this.state.uniqueItems.length,
+<<<<<<< HEAD
     });
 
     if (success) {
@@ -317,15 +371,69 @@ export class VictoryScene extends Phaser.Scene {
         this.scene.start('RankingScene', { level: this.level });
       });
     } else {
+=======
+    };
+
+    // Persist locally — wrap in try/catch to detect save failure
+    try {
+      RankingService.saveLocal(submission, this.matchId);
+    } catch {
       Toast.show(this, {
-        text: 'Ranking temporalmente no disponible',
-        subtext: 'Intentá más tarde',
-        color: '#ff8844',
+        text: 'No se pudo guardar',
+        subtext: 'Intentá de nuevo más tarde',
+        color: '#ff6644',
         x: GAME_WIDTH / 2,
         y: GAME_HEIGHT / 2,
       });
-      this.isSubmitting = false;
+      return;
     }
+
+    // Verify save succeeded by checking localStorage
+    if (!RankingService.isAlreadySubmitted(this.matchId)) {
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
+      Toast.show(this, {
+        text: 'No se pudo guardar',
+        subtext: 'Intentá de nuevo más tarde',
+        color: '#ff6644',
+        x: GAME_WIDTH / 2,
+        y: GAME_HEIGHT / 2,
+      });
+<<<<<<< HEAD
+      this.isSubmitting = false;
+=======
+      return;
+>>>>>>> 0c944d18c8a21c693c142ee2347134fc3eac066f
+    }
+
+    this.submitted = true;
+
+    // Show confirmation toast
+    Toast.show(this, {
+      text: '¡Puntaje enviado!',
+      subtext: 'Tu score está en el ranking',
+      color: '#44ff88',
+      x: GAME_WIDTH / 2,
+      y: GAME_HEIGHT / 2,
+    });
+
+    // Fire-and-forget remote submit (don't await before scheduling transition)
+    RankingService.submit(submission);
+
+    // Schedule navigation to RankingScene
+    this.scheduleRankingTransition();
+  }
+
+  // ─── Transition Scheduling ───────────────────────────────────────────────────
+
+  private scheduleRankingTransition(): void {
+    // Disable all interactive buttons
+    this.focusableElements.forEach((btn) => btn.setEnabled(false));
+    this.transitionBlocked = true;
+
+    // Schedule navigation after 2000ms delay
+    this.pendingTransition = this.time.delayedCall(2000, () => {
+      this.scene.start('RankingScene', { level: this.level });
+    });
   }
 
   // ─── Navigation Buttons ──────────────────────────────────────────────────────
@@ -383,11 +491,13 @@ export class VictoryScene extends Phaser.Scene {
 
   private setupKeyboardNavigation(): void {
     this.input.keyboard?.on('keydown-TAB', (event: KeyboardEvent) => {
+      if (this.transitionBlocked) return;
       event.preventDefault();
       this.cycleFocus(event.shiftKey ? -1 : 1);
     });
 
     this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.transitionBlocked) return;
       this.scene.start('MenuScene');
     });
   }
@@ -405,5 +515,14 @@ export class VictoryScene extends Phaser.Scene {
     }
 
     this.focusableElements[this.focusIndex]?.setFocused(true);
+  }
+
+  // ─── Scene Lifecycle ─────────────────────────────────────────────────────────
+
+  shutdown(): void {
+    if (this.pendingTransition) {
+      this.pendingTransition.remove(false);
+      this.pendingTransition = null;
+    }
   }
 }
