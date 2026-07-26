@@ -557,6 +557,9 @@ export class LevelScene extends Phaser.Scene {
     const updates = processCapture(this.state, capturedItem, SCORING_CONFIG);
     Object.assign(this.state, updates);
 
+    // Play magical powerup sound
+    this.audioSystem.playSFX('sfx-powerup');
+
     // Activate power-up effect
     this.activatePowerUp();
 
