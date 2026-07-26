@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { GameState, LevelConfig } from '../types/game.types';
 import { Button } from '../ui/Button';
+import { DomInput } from '../ui/DomInput';
 import { Toast } from '../ui/Toast';
 import { StorageService } from '../services/storage-service';
 import { RankingService } from '../services/ranking-service';
@@ -21,8 +22,9 @@ export class GameOverScene extends Phaser.Scene {
   private state!: GameState;
   private vitaScore!: number;
   private levelConfig!: LevelConfig;
-  private aliasValue = '';
+  private aliasInput!: DomInput;
   private audioSystem = new AudioSystem();
+  private isSubmitting = false;
 
   // Keyboard navigation
   private focusableElements: Button[] = [];
@@ -37,6 +39,9 @@ export class GameOverScene extends Phaser.Scene {
     this.state = data.state;
     this.vitaScore = data.vitaScore;
     this.levelConfig = data.levelConfig;
+    this.isSubmitting = false;
+    this.focusableElements = [];
+    this.focusIndex = 0;
   }
 
   create(): void {
@@ -142,7 +147,7 @@ export class GameOverScene extends Phaser.Scene {
   private createAliasSection(x: number, y: number): void {
     // Pre-fill from profile
     const profile = StorageService.getProfile();
-    this.aliasValue = profile.nickname || '';
+    const initialAlias = profile.nickname || '';
 
     this.add.text(x, y, 'Alias para ranking (puntaje parcial):', {
       fontFamily: 'Nunito, sans-serif',
@@ -151,39 +156,19 @@ export class GameOverScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5, 0.5);
 
-    // Simulated text input using Phaser text + keyboard capture
-    const inputBg = this.add.graphics();
     const inputWidth = 200;
     const inputHeight = 32;
-    const inputX = x - inputWidth / 2;
     const inputY = y + 14;
 
-    inputBg.fillStyle(0x141e28, 1);
-    inputBg.fillRoundedRect(inputX, inputY, inputWidth, inputHeight, 8);
-    inputBg.lineStyle(2, 0x446688, 1);
-    inputBg.strokeRoundedRect(inputX, inputY, inputWidth, inputHeight, 8);
-
-    const aliasDisplay = this.add.text(x, inputY + inputHeight / 2, this.aliasValue, {
-      fontFamily: 'Nunito, sans-serif',
-      fontSize: '14px',
-      color: '#cccccc',
-      align: 'center',
-    }).setOrigin(0.5, 0.5);
-
-    // Keyboard input handling for alias (ignores navigation keys)
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      // Let navigation keys pass through to buttons/scene
-      if (['Enter', 'Tab', 'Escape'].includes(event.key)) return;
-
-      if (event.key === 'Backspace') {
-        this.aliasValue = this.aliasValue.slice(0, -1);
-      } else if (event.key.length === 1 && this.aliasValue.length < 16) {
-        // Allow alphanumeric + spaces
-        if (/^[a-zA-Z0-9 ]$/.test(event.key)) {
-          this.aliasValue += event.key;
-        }
-      }
-      aliasDisplay.setText(this.aliasValue);
+    // Real HTML input overlaid on canvas
+    this.aliasInput = new DomInput(this, {
+      x,
+      y: inputY,
+      width: inputWidth,
+      height: inputHeight,
+      placeholder: 'Tu alias...',
+      initialValue: initialAlias,
+      maxLength: 16,
     });
 
     // Submit button
@@ -203,7 +188,10 @@ export class GameOverScene extends Phaser.Scene {
   // ─── Ranking Submission ──────────────────────────────────────────────────────
 
   private async handleSubmitRanking(): Promise<void> {
-    const alias = this.aliasValue.trim();
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+
+    const alias = this.aliasInput.getValue();
 
     // Validate alias: 1–16 chars, alphanumeric + spaces
     if (alias.length < 1 || alias.length > 16 || !/^[a-zA-Z0-9 ]+$/.test(alias)) {
@@ -214,6 +202,7 @@ export class GameOverScene extends Phaser.Scene {
         x: GAME_WIDTH / 2,
         y: GAME_HEIGHT / 2,
       });
+      this.isSubmitting = false;
       return;
     }
 
@@ -222,23 +211,28 @@ export class GameOverScene extends Phaser.Scene {
     profile.nickname = alias;
     StorageService.saveProfile(profile);
 
-    try {
-      await RankingService.submit({
-        alias,
-        level: this.level,
-        vitaScore: this.vitaScore,
-        precision: this.state.precision,
-        variety: this.state.uniqueItems.length,
-      });
+    const success = await RankingService.submit({
+      alias,
+      level: this.level,
+      vitaScore: this.vitaScore,
+      precision: this.state.precision,
+      variety: this.state.uniqueItems.length,
+    });
 
+    if (success) {
       Toast.show(this, {
         text: '¡Puntaje enviado!',
-        subtext: 'Tu score parcial está en el ranking',
+        subtext: 'Mirá tu posición en el ranking',
         color: '#44ff88',
         x: GAME_WIDTH / 2,
         y: GAME_HEIGHT / 2,
       });
-    } catch {
+
+      // Navigate to ranking screen after a short delay so the user sees the toast
+      this.time.delayedCall(1500, () => {
+        this.scene.start('RankingScene', { level: this.level });
+      });
+    } else {
       Toast.show(this, {
         text: 'Ranking temporalmente no disponible',
         subtext: 'Intentá más tarde',
@@ -246,6 +240,7 @@ export class GameOverScene extends Phaser.Scene {
         x: GAME_WIDTH / 2,
         y: GAME_HEIGHT / 2,
       });
+      this.isSubmitting = false;
     }
   }
 

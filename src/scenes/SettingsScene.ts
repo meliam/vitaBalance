@@ -32,12 +32,6 @@ export class SettingsScene extends Phaser.Scene {
   create(): void {
     this.settings = StorageService.getSettings();
 
-    // Sync reduceMotion with registry (which may reflect OS preference)
-    const registryReduceMotion = this.registry.get('reduceMotion') as boolean | undefined;
-    if (registryReduceMotion !== undefined) {
-      this.settings.reduceMotion = registryReduceMotion;
-    }
-
     this.createBackground();
     this.createTitle();
     this.createSettingsPanel();
@@ -90,8 +84,6 @@ export class SettingsScene extends Phaser.Scene {
         this.settings.reduceMotion = value;
         this.saveSettings();
         this.registry.set('reduceMotion', value);
-        // Update the OS-level CSS class to signal reduced motion
-        document.documentElement.classList.toggle('reduce-motion', value);
       },
     });
     this.focusableElements.push(reduceMotionToggle);
@@ -113,9 +105,6 @@ export class SettingsScene extends Phaser.Scene {
       onChange: (value: boolean) => {
         this.settings.musicEnabled = value;
         this.saveSettings();
-        // Apply music toggle globally: mute/unmute the Phaser sound manager
-        this.sound.mute = !value;
-        this.registry.set('musicEnabled', value);
       },
     });
     this.focusableElements.push(musicToggle);
@@ -274,8 +263,6 @@ export class SettingsScene extends Phaser.Scene {
     this.settings.volume = newVolume;
     this.volumeText.setText(this.formatVolume(newVolume));
     this.saveSettings();
-    // Apply volume change globally to the Phaser sound manager
-    this.sound.volume = newVolume;
   }
 
   private formatVolume(volume: number): string {

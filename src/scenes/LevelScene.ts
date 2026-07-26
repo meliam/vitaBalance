@@ -27,7 +27,6 @@ import {
   POWERUP_SPEED_FACTOR,
   FLASH_DURATION,
   FLASH_OPACITY,
-  REDUCED_MOTION_SPEED_FACTOR,
 } from '../utils/constants';
 
 /**
@@ -139,7 +138,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     // Reset power-up state
-    this.speedMultiplier = this.reduceMotion ? REDUCED_MOTION_SPEED_FACTOR : 1.0;
+    this.speedMultiplier = 1.0;
     this.powerupActive = false;
     this.powerupTimerEvent = null;
   }
@@ -165,9 +164,7 @@ export class LevelScene extends Phaser.Scene {
     // Initialize audio system with saved settings
     const settings = StorageService.getSettings();
     this.audioSystem.init(this, { musicEnabled: settings.musicEnabled, volume: settings.volume });
-    if (settings.musicEnabled && !this.sound.mute) {
-      this.audioSystem.playMusic('bgm-level');
-    }
+    this.audioSystem.playMusic('bgm-level');
 
     // Create player with current outfit
     const progress = StorageService.getProgress();
@@ -485,24 +482,18 @@ export class LevelScene extends Phaser.Scene {
       potassium: product.productData.potassium,
     };
 
-    // ── DEBUG: Log capture details ──
-    console.log(`[Capture] ${product.type}: "${product.productData.name}" | vitC:${!!product.productData.vitaminC} pot:${!!product.productData.potassium} | id:${product.productData.id}`);
-
     // Process scoring
     const updates = processCapture(this.state, capturedItem, SCORING_CONFIG);
     Object.assign(this.state, updates);
 
     // Level 3: update checklist if product is in target products
-    if (this.levelConfig.objective.type === 'seasonal') {
-      const isTarget = this.levelConfig.objective.products.includes(product.productData.id);
-      console.log(`[L3 Check] id:"${product.productData.id}" type:${product.type} isTarget:${isTarget} targets:`, this.levelConfig.objective.products);
-      if (product.type === 'correct' && isTarget) {
-        this.state.checklist[product.productData.id] = true;
-      }
+    if (
+      this.levelConfig.objective.type === 'seasonal' &&
+      product.type === 'correct' &&
+      this.levelConfig.objective.products.includes(product.productData.id)
+    ) {
+      this.state.checklist[product.productData.id] = true;
     }
-
-    // ── DEBUG: Log state after capture ──
-    console.log(`[State] lives:${this.state.lives} potCaught:${this.state.potassiumCaught} vitCCaught:${this.state.vitaminCCaught} checklist:`, JSON.stringify(this.state.checklist));
 
     // Audio feedback based on capture type
     if (product.type === 'correct') {
@@ -586,10 +577,7 @@ export class LevelScene extends Phaser.Scene {
 
     // Start expiry timer
     this.powerupTimerEvent = this.time.delayedCall(POWERUP_DURATION, () => {
-      const baseSpeed = (this.registry.get('reduceMotion') as boolean)
-        ? REDUCED_MOTION_SPEED_FACTOR
-        : 1.0;
-      this.speedMultiplier = baseSpeed;
+      this.speedMultiplier = 1.0;
       this.powerupActive = false;
       this.state.powerupActive = false;
       this.state.powerupTimeRemaining = 0;

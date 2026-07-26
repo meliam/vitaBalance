@@ -22,7 +22,6 @@ export class Toggle extends Phaser.GameObjects.Container {
   private track: Phaser.GameObjects.Graphics;
   private knob: Phaser.GameObjects.Graphics;
   private focusRing: Phaser.GameObjects.Graphics;
-  private hitZone: Phaser.GameObjects.Zone;
   private labelText: Phaser.GameObjects.Text | null = null;
 
   private value: boolean;
@@ -46,13 +45,10 @@ export class Toggle extends Phaser.GameObjects.Container {
   private static readonly FOCUS_RING_WIDTH = 4;
 
   // Animation
-  private static readonly TWEEN_DURATION = 120;
+  private static readonly TWEEN_DURATION = 150;
 
   // Label spacing
   private static readonly LABEL_GAP = 12;
-
-  // Active tween reference (to kill on rapid re-toggle)
-  private knobTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, config: ToggleConfig) {
     super(scene, config.x, config.y);
@@ -98,16 +94,22 @@ export class Toggle extends Phaser.GameObjects.Container {
     this.drawTrack();
     this.drawKnob();
 
-    // Use a Zone for reliable hit detection (same pattern as Button.ts)
-    // This avoids the Container hit-test issues in Phaser 3
-    const hitWidth = Toggle.TRACK_WIDTH + 20;
-    const hitHeight = Math.max(Toggle.TRACK_HEIGHT + 20, MIN_TOUCH_TARGET);
-    this.hitZone = new Phaser.GameObjects.Zone(scene, 0, 0, hitWidth, hitHeight);
-    this.hitZone.setInteractive({ useHandCursor: true });
-    this.add(this.hitZone);
+    // Set interactive hit area with minimum touch target
+    const hitWidth = Math.max(Toggle.TRACK_WIDTH, MIN_TOUCH_TARGET);
+    const hitHeight = Math.max(Toggle.TRACK_HEIGHT, MIN_TOUCH_TARGET);
+    this.setSize(hitWidth, hitHeight);
+    this.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -hitWidth / 2,
+        -hitHeight / 2,
+        hitWidth,
+        hitHeight,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    );
 
-    // Pointer event handler on the zone
-    this.hitZone.on('pointerdown', this.handlePointerDown, this);
+    // Pointer event handler
+    this.on('pointerdown', this.handlePointerDown, this);
 
     // Listen for keyboard events (Enter key when focused)
     scene.input.keyboard?.on('keydown-ENTER', this.handleKeyEnter, this);
@@ -191,33 +193,24 @@ export class Toggle extends Phaser.GameObjects.Container {
   }
 
   private animateKnob(): void {
-    // Kill any in-progress knob tween to prevent conflicts on rapid clicks
-    if (this.knobTween) {
-      this.knobTween.stop();
-      this.knobTween = null;
-    }
-
     const targetX = this.getKnobX();
-    const startX = this.value
-      ? -(Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS)
-      : Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS;
 
     // Use a tween to animate knob position
-    this.knobTween = this.scene.tweens.addCounter({
+    this.scene.tweens.addCounter({
       from: 0,
       to: 1,
       duration: Toggle.TWEEN_DURATION,
-      ease: 'Quad.easeOut',
+      ease: 'Quad.easeInOut',
       onUpdate: (tween) => {
         const progress = tween.getValue() ?? 0;
+        const startX = this.value
+          ? -(Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS)
+          : Toggle.TRACK_WIDTH / 2 - Toggle.KNOB_PADDING - Toggle.KNOB_RADIUS;
         const currentX = Phaser.Math.Linear(startX, targetX, progress);
 
         this.knob.clear();
         this.knob.fillStyle(Toggle.KNOB_COLOR, 1);
         this.knob.fillCircle(currentX, 0, Toggle.KNOB_RADIUS);
-      },
-      onComplete: () => {
-        this.knobTween = null;
       },
     });
   }

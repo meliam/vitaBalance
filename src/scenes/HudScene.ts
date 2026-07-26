@@ -75,6 +75,11 @@ export class HudScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset arrays from previous run (handles scene restart/repeat)
+    this.livesTexts = [];
+    this.level3Items = [];
+    this.level3Checks = [];
+
     // Semi-transparent background strip
     const bgGraphics = this.add.graphics();
     bgGraphics.fillStyle(HudScene.BG_COLOR, HudScene.BG_ALPHA);
@@ -106,9 +111,8 @@ export class HudScene extends Phaser.Scene {
       this.updateCombo(state.combo);
       this.updateObjective(state);
       this.updatePowerup(state);
-    } catch (e) {
-      // Log the error for debugging
-      console.error('[HudScene] update error:', e);
+    } catch {
+      // Scene objects may have been destroyed during transition — stop gracefully
     }
   }
 
@@ -192,17 +196,20 @@ export class HudScene extends Phaser.Scene {
     pauseIcon.setOrigin(0.5, 0.5);
     this.pauseBtn.add(pauseIcon);
 
-    // Use a Zone for reliable click detection (same pattern as Button)
-    const hitZone = this.add.zone(0, 0, 44, 44);
-    hitZone.setInteractive({ useHandCursor: true });
-    hitZone.on('pointerdown', () => {
+    // Interactive
+    this.pauseBtn.setSize(44, 44);
+    this.pauseBtn.setInteractive(
+      new Phaser.Geom.Circle(0, 0, 22),
+      Phaser.Geom.Circle.Contains,
+    );
+    this.pauseBtn.on('pointerup', () => {
+      // Pause the level scene
       const levelScene = this.scene.get('LevelScene');
       if (levelScene && levelScene.scene.isActive()) {
         levelScene.scene.launch('PauseScene');
         levelScene.scene.pause();
       }
     });
-    this.pauseBtn.add(hitZone);
   }
 
   private createPowerupIndicator(): void {
@@ -229,11 +236,10 @@ export class HudScene extends Phaser.Scene {
   private createObjectiveDisplay(): void {
     this.objectiveContainer = this.add.container(0, HudScene.HUD_HEIGHT + 4);
 
-    // Objective background strip (taller for Level 3 to fit checks below emojis)
-    const stripHeight = this.levelConfig.id === 3 ? 38 : 28;
+    // Objective background strip
     const objBg = this.add.graphics();
     objBg.fillStyle(HudScene.BG_COLOR, 0.7);
-    objBg.fillRect(0, 0, GAME_WIDTH, stripHeight);
+    objBg.fillRect(0, 0, GAME_WIDTH, 28);
     this.objectiveContainer.add(objBg);
 
     const levelId = this.levelConfig.id;
@@ -300,7 +306,7 @@ export class HudScene extends Phaser.Scene {
       const emoji = productConfig?.emoji ?? '🍎';
 
       // Product emoji
-      const itemText = this.add.text(startX + i * spacing, 10, emoji, {
+      const itemText = this.add.text(startX + i * spacing, 14, emoji, {
         fontSize: '18px',
         align: 'center',
       });
@@ -308,13 +314,11 @@ export class HudScene extends Phaser.Scene {
       this.objectiveContainer.add(itemText);
       this.level3Items.push(itemText);
 
-      // Check mark below emoji (visible green ✓ with background)
-      const checkText = this.add.text(startX + i * spacing, 24, '✓', {
-        fontSize: '12px',
-        color: '#000000',
+      // Check overlay (hidden initially)
+      const checkText = this.add.text(startX + i * spacing, 14, '✓', {
+        fontSize: '14px',
+        color: '#4caf50',
         fontStyle: 'bold',
-        backgroundColor: '#4caf50',
-        padding: { x: 3, y: 1 },
         align: 'center',
       });
       checkText.setOrigin(0.5, 0.5);
@@ -332,8 +336,7 @@ export class HudScene extends Phaser.Scene {
 
   private updateLives(lives: number): void {
     for (let i = 0; i < MAX_LIVES; i++) {
-      // Use alpha to show lost lives (avoids setText crash with emoji texture regeneration)
-      this.livesTexts[i].setAlpha(i < lives ? 1 : 0.2);
+      this.livesTexts[i].setText(i < lives ? '❤️' : '🖤');
     }
   }
 
@@ -429,8 +432,10 @@ export class HudScene extends Phaser.Scene {
       const products = objective.products;
       for (let i = 0; i < products.length; i++) {
         const captured = state.checklist[products[i]] === true;
-        if (this.level3Checks[i]) {
-          this.level3Checks[i].setVisible(captured);
+        const checkEl = this.level3Checks[i];
+        if (checkEl && checkEl.visible !== captured) {
+          console.log(`[HUD L3] ${products[i]}: captured=${captured} checkVisible=${checkEl.visible} -> setting to ${captured}`);
+          checkEl.setVisible(captured);
         }
       }
     }

@@ -27,6 +27,10 @@ export class RankingScene extends Phaser.Scene {
     super({ key: 'RankingScene' });
   }
 
+  init(data?: { level?: 1 | 2 | 3 }): void {
+    this.selectedLevel = data?.level ?? 1;
+  }
+
   create(): void {
     // ── Background ──
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0d1b2a);

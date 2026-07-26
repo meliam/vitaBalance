@@ -76,6 +76,14 @@ export function processCapture(
       // Track last item name for combo logic
       updates.lastItemName = item.name;
 
+      // Level-specific flags
+      if (item.vitaminC) {
+        updates.vitaminCCaught = true;
+      }
+      if (item.potassium) {
+        updates.potassiumCaught = true;
+      }
+
       // totalCaught for L1 objective tracking
       updates.totalCaught = state.totalCaught + 1;
 
@@ -126,14 +134,6 @@ export function processCapture(
       updates.precision = (state.correctCaptures / newTotalCaptures) * 100;
       break;
     }
-  }
-
-  // Level-specific nutrient flags — count regardless of capture type
-  if (item.vitaminC) {
-    updates.vitaminCCaught = true;
-  }
-  if (item.potassium) {
-    updates.potassiumCaught = true;
   }
 
   return updates;

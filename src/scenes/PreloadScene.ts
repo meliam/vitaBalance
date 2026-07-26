@@ -37,17 +37,10 @@ export class PreloadScene extends Phaser.Scene {
   async create(): Promise<void> {
     this.generateFallbackTextures();
 
-    // Initialize settings in registry from saved data or OS preference
+    // Initialize reduceMotion in registry from settings or OS preference
     const settings = StorageService.getSettings();
     const reduceMotion = getReducedMotionSetting(settings);
     this.registry.set('reduceMotion', reduceMotion);
-    this.registry.set('musicEnabled', settings.musicEnabled);
-
-    // Apply music mute state globally on startup
-    this.sound.mute = !settings.musicEnabled;
-
-    // Apply reduce-motion CSS class
-    document.documentElement.classList.toggle('reduce-motion', reduceMotion);
 
     // Load web fonts before transitioning (with timeout fallback)
     await PreloadScene.loadFonts();
